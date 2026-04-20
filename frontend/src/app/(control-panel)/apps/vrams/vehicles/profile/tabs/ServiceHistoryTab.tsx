@@ -1,0 +1,60 @@
+import { useMemo } from 'react';
+import { type MRT_ColumnDef } from 'material-react-table';
+import DataTable from 'src/components/data-table/DataTable';
+import Paper from '@mui/material/Paper';
+import Chip from '@mui/material/Chip';
+import FuseLoading from '@fuse/core/FuseLoading';
+import { useGetVramsVehicleMaintenanceQuery } from '../../../VramsApi';
+import type { MaintenanceLog } from '../../../types';
+
+function ServiceHistoryTab({ vehicleId }: { vehicleId: number }) {
+	const { data: logs, isLoading } = useGetVramsVehicleMaintenanceQuery(vehicleId);
+
+	const columns = useMemo<MRT_ColumnDef<MaintenanceLog>[]>(
+		() => [
+			{ accessorKey: 'service_type', header: 'Service Type' },
+			{
+				accessorKey: 'date_performed',
+				header: 'Date',
+				Cell: ({ cell }) => new Date(cell.getValue<string>()).toLocaleDateString()
+			},
+			{ accessorKey: 'technician', header: 'Technician' },
+			{
+				accessorKey: 'cost_kes',
+				header: 'Cost (KES)',
+				Cell: ({ cell }) => cell.getValue<number>()?.toLocaleString() ?? '—'
+			},
+			{
+				accessorKey: 'next_due_date',
+				header: 'Next Due',
+				Cell: ({ cell }) => {
+					const v = cell.getValue<string>();
+					if (!v) return '—';
+					const days = Math.ceil((new Date(v).getTime() - Date.now()) / 86400000);
+					return (
+						<Chip
+							label={new Date(v).toLocaleDateString()}
+							color={days < 0 ? 'error' : days < 30 ? 'warning' : 'success'}
+							size="small"
+						/>
+					);
+				}
+			}
+		],
+		[]
+	);
+
+	if (isLoading) return <FuseLoading />;
+
+	return (
+		<Paper className="rounded-xl overflow-hidden" elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+			<DataTable
+				data={logs ?? []}
+				columns={columns}
+				initialState={{ density: 'comfortable' }}
+			/>
+		</Paper>
+	);
+}
+
+export default ServiceHistoryTab;
