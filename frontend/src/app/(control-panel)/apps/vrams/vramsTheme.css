@@ -1,0 +1,143 @@
+.vrams-app {
+	font-size: 15px;
+	line-height: 1.45;
+}
+
+/* Global readability bump across VRAMS pages/components */
+.vrams-app :where(.text-xs) {
+	font-size: 0.84rem;
+	line-height: 1.35;
+}
+
+.vrams-app :where(.text-sm) {
+	font-size: 0.96rem;
+	line-height: 1.45;
+}
+
+.vrams-app :where(.text-base) {
+	font-size: 1.04rem;
+	line-height: 1.5;
+}
+
+.vrams-app :where(.MuiTypography-body2) {
+	font-size: 0.96rem;
+	line-height: 1.45;
+}
+
+.vrams-app :where(.MuiTypography-caption) {
+	font-size: 0.84rem;
+	line-height: 1.35;
+}
+
+.vrams-page {
+	padding: 1.75rem 2rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.vrams-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.vrams-title {
+	margin: 0;
+	font-size: 1.875rem;
+	line-height: 1.1;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	color: #0f172a;
+}
+
+.vrams-subtitle {
+	margin: 0.35rem 0 0;
+	font-size: 0.95rem;
+	color: #64748b;
+}
+
+.vrams-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	flex-wrap: wrap;
+}
+
+.vrams-card {
+	background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+	border: 1px solid #e2e8f0;
+	border-radius: 16px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.vrams-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.vrams-card-title {
+	margin: 0;
+	font-size: 1.025rem;
+	font-weight: 800;
+	color: #0f172a;
+}
+
+.vrams-card-subtitle {
+	margin: 0.25rem 0 0;
+	font-size: 0.8125rem;
+	color: #64748b;
+}
+
+.vrams-metric-strip {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.625rem;
+}
+
+.vrams-metric-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.45rem 0.8rem;
+	border-radius: 999px;
+	border: 1px solid #e2e8f0;
+	background: #fff;
+}
+
+.vrams-metric-value {
+	font-size: 0.875rem;
+	font-weight: 800;
+	line-height: 1;
+}
+
+.vrams-metric-label {
+	font-size: 0.75rem;
+	font-weight: 700;
+	color: #64748b;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.vrams-metric-default .vrams-metric-value { color: #334155; }
+.vrams-metric-success .vrams-metric-value { color: #15803d; }
+.vrams-metric-warning .vrams-metric-value { color: #b45309; }
+.vrams-metric-danger .vrams-metric-value { color: #b91c1c; }
+.vrams-metric-info .vrams-metric-value { color: #1d4ed8; }
+
+/* Global interaction affordance for VRAMS surfaces */
+.vrams-page button,
+.vrams-page a,
+.vrams-page [role="button"] {
+	cursor: pointer;
+}
+
+.vrams-page button:disabled {
+	cursor: not-allowed;
+}

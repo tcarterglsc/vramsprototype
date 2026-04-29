@@ -26,13 +26,18 @@ const schema = z.object({
 
 type FormType = z.infer<typeof schema>;
 
+type JwtSignInFormProps = {
+	initialEmail?: string;
+	initialPassword?: string;
+};
+
 const defaultValues: FormType = {
 	email: '',
 	password: '',
 	remember: true
 };
 
-function JwtSignInForm() {
+function JwtSignInForm({ initialEmail, initialPassword }: JwtSignInFormProps) {
 	const { signIn } = useJwtAuth();
 
 	const { control, formState, handleSubmit, setValue, setError } = useForm<FormType>({
@@ -44,9 +49,13 @@ function JwtSignInForm() {
 	const { isValid, dirtyFields, errors } = formState;
 
 	useEffect(() => {
-		setValue('email', 'admin@vrams.org', { shouldDirty: true, shouldValidate: true });
-		setValue('password', 'Password123!', { shouldDirty: true, shouldValidate: true });
-	}, [setValue]);
+		if (initialEmail) {
+			setValue('email', initialEmail, { shouldDirty: true, shouldValidate: true });
+		}
+		if (initialPassword) {
+			setValue('password', initialPassword, { shouldDirty: true, shouldValidate: true });
+		}
+	}, [initialEmail, initialPassword, setValue]);
 
 	function onSubmit(formData: FormType) {
 		const { email, password } = formData;

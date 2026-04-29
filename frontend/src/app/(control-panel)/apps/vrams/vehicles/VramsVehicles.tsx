@@ -4,6 +4,7 @@ import Switch from '@mui/material/Switch';
 import { useGetVramsVehiclesQuery } from '../VramsApi';
 import type { Vehicle } from '../types';
 import VehicleIllustration from '../components/VehicleIllustration';
+import { VramsCard, VramsHeader, VramsMetricStrip, VramsPage } from '../components/VramsUi';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, { label: string; cls: string }> = {
@@ -120,26 +121,12 @@ function VramsVehicles() {
 	const outOfService = vehicles.filter((v) => v.status === 'out_of_service').length;
 
 	return (
-		<div className="p-8 space-y-7">
+		<VramsPage className="space-y-7">
 			{/* Page header */}
-			<div className="flex flex-wrap items-start justify-between gap-5">
-				<div>
-					<h1 className="text-3xl font-bold text-gray-900">Fleet Vehicles</h1>
-					<p className="text-base text-gray-500 mt-1">Manage and monitor all fleet vehicles, compliance, and bookability.</p>
-				</div>
-
-				<div className="flex flex-wrap items-center gap-3">
-					{[
-						{ icon: '🚗', value: total, label: 'Total', cls: 'text-blue-600' },
-						{ icon: '✓', value: available, label: 'Available', cls: 'text-green-600' },
-						{ icon: '🔧', value: inService, label: 'In Service', cls: 'text-amber-600' },
-						{ icon: '✕', value: outOfService, label: 'Out of Service', cls: 'text-red-600' }
-					].map((s) => (
-						<div key={s.label} className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5">
-							<span className={`text-xl font-bold ${s.cls}`}>{s.value}</span>
-							<span className="text-sm text-gray-500">{s.label}</span>
-						</div>
-					))}
+			<VramsHeader
+				title="Fleet Vehicles"
+				subtitle="Manage and monitor all fleet vehicles, compliance, and bookability."
+				actions={
 					<button
 						type="button"
 						onClick={() => navigate('/apps/vrams/vehicles/register')}
@@ -150,11 +137,19 @@ function VramsVehicles() {
 						</svg>
 						+ Add Vehicle
 					</button>
-				</div>
-			</div>
+				}
+			/>
+			<VramsMetricStrip
+				items={[
+					{ value: total, label: 'Total', tone: 'info' },
+					{ value: available, label: 'Available', tone: 'success' },
+					{ value: inService, label: 'In Service', tone: 'warning' },
+					{ value: outOfService, label: 'Out of Service', tone: 'danger' }
+				]}
+			/>
 
 			{/* Filters */}
-			<div className="flex flex-wrap gap-3 items-center bg-white border border-gray-200 rounded-2xl px-5 py-4">
+			<VramsCard className="flex flex-wrap gap-3 items-center px-5 py-4">
 				<div className="relative flex-1 min-w-[200px]">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
 						className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400">
@@ -192,7 +187,7 @@ function VramsVehicles() {
 					<Switch checked={bookableOnly} onChange={(e) => setBookableOnly(e.target.checked)} />
 					Bookable only
 				</label>
-			</div>
+			</VramsCard>
 
 			{/* Card Grid */}
 			{isLoading ? (
@@ -216,7 +211,7 @@ function VramsVehicles() {
 					</p>
 				</>
 			)}
-		</div>
+		</VramsPage>
 	);
 }
 

@@ -12,6 +12,7 @@ import {
 	useGetVramsDriversQuery
 } from '../VramsApi';
 import type { VramsRequest, Dispatch } from '../types';
+import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, string> = {
@@ -230,17 +231,15 @@ function VramsDispatch() {
 	};
 
 	return (
-		<div className="p-8 space-y-8">
+		<VramsPage>
 			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-gray-900">Dispatch Management</h1>
-				<p className="text-base text-gray-500 mt-1">
-					Assign vehicles and drivers to approved requests, and monitor today's dispatches.
-				</p>
-			</div>
+			<VramsHeader
+				title="Dispatch Management"
+				subtitle="Assign vehicles and drivers to approved requests, and monitor today's dispatches."
+			/>
 
 			{/* Awaiting Assignment */}
-			<div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+			<VramsCard className="overflow-hidden">
 				<div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
 					<div className="flex items-center gap-4">
 						<div className="w-11 h-11 bg-purple-100 rounded-xl flex items-center justify-center text-xl">📋</div>
@@ -283,10 +282,10 @@ function VramsDispatch() {
 						</table>
 					</div>
 				)}
-			</div>
+			</VramsCard>
 
 			{/* Today's Dispatches */}
-			<div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+			<VramsCard className="overflow-hidden">
 				<div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 border-b border-gray-100">
 					<div className="flex items-center gap-4">
 						<div className="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center text-xl">🔄</div>
@@ -360,8 +359,8 @@ function VramsDispatch() {
 						<span className="text-red-500">● Delayed: {counts.delayed}</span>
 					</div>
 				</div>
-			</div>
-		</div>
+			</VramsCard>
+		</VramsPage>
 	);
 }
 

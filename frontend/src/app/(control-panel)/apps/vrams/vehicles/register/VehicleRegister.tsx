@@ -7,6 +7,7 @@ import { useSnackbar } from 'notistack';
 import Switch from '@mui/material/Switch';
 import { useCreateVramsVehicleMutation, useGetVramsDriversQuery } from '../../VramsApi';
 import VehicleIllustration from '../../components/VehicleIllustration';
+import { VramsCard, VramsHeader, VramsPage } from '../../components/VramsUi';
 
 const schema = z.object({
 	plate: z.string().min(3, 'Required').toUpperCase(),
@@ -174,7 +175,7 @@ function VehicleRegister() {
 	}
 
 	return (
-		<div className="p-8">
+		<VramsPage>
 			{/* Breadcrumb */}
 			<div className="flex items-center gap-2 mb-6 text-sm">
 				<button
@@ -189,15 +190,12 @@ function VehicleRegister() {
 			</div>
 
 			{/* Page title */}
-			<div className="mb-7">
-				<h1 className="text-3xl font-bold text-gray-900">Vehicle Management</h1>
-				<p className="text-base text-gray-500 mt-1">Add and configure fleet vehicles</p>
-			</div>
+			<VramsHeader title="Vehicle Management" subtitle="Add and configure fleet vehicles" />
 
 			{/* Two-column layout: form + action panel */}
 			<div className="flex gap-6 items-start">
 				{/* Main form card */}
-				<div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+				<VramsCard className="flex-1 min-w-0 overflow-hidden">
 					{/* Card header */}
 					<div className="flex items-center gap-4 px-8 py-5 border-b border-gray-100">
 						<div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">🚗</div>
@@ -795,13 +793,13 @@ function VehicleRegister() {
 							</button>
 						</div>
 					</div>
-				</div>
+				</VramsCard>
 
 				{/* Action sidebar */}
 				<div className="w-72 flex-shrink-0 space-y-5 sticky top-20">
 
 					{/* ── Live vehicle preview ── */}
-					<div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+					<VramsCard className="overflow-hidden">
 						<div className="px-5 pt-4 pb-1">
 							<p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preview</p>
 						</div>
@@ -849,9 +847,9 @@ function VehicleRegister() {
 								)}
 							</div>
 						</div>
-					</div>
+					</VramsCard>
 
-					<div className="bg-white rounded-2xl border border-gray-200 p-5">
+					<VramsCard className="p-5">
 						<p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Quick Actions</p>
 						<div className="space-y-2">
 							<button
@@ -862,7 +860,7 @@ function VehicleRegister() {
 								<span>📅</span> Book Vehicle
 							</button>
 						</div>
-					</div>
+					</VramsCard>
 
 					<div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
 						<p className="text-sm font-bold text-amber-700 mb-2">💡 Required Documents</p>
@@ -874,7 +872,7 @@ function VehicleRegister() {
 					</div>
 				</div>
 			</div>
-		</div>
+		</VramsPage>
 	);
 }
 

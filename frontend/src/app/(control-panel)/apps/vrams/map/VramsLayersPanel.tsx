@@ -57,11 +57,13 @@ export default function VramsLayersPanel({
       sx={{
         position: "relative",
         top: 0,
-        left: "1vw",
+        left: 0,
         width: 280,
         p: 1,
         borderRadius: 3,
-        bgcolor: "background.paper",
+        bgcolor: "rgba(255,255,255,0.95)",
+        backdropFilter: "blur(8px)",
+        border: "1px solid #e2e8f0",
         zIndex: 1000,
       }}
     >

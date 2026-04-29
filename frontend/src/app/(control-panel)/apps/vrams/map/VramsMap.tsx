@@ -379,16 +379,16 @@ export default function VramsMap() {
   const selectedDispatch = selectedVehicle ? dispatchMap[selectedVehicle.id] : undefined;
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 64px)", width: "100%" }}>
+    <div style={{ display: "flex", height: "calc(100vh - 64px)", width: "100%", background: "#f8fafc" }}>
 
       {/* ── Left sidebar ── */}
       <div style={{
-        width: 300, flexShrink: 0, background: "#fff",
-        borderRight: "1px solid #e5e7eb",
+        width: 300, flexShrink: 0, background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+        borderRight: "1px solid #dbe3ef",
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
         {/* Header */}
-        <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #f3f4f6" }}>
+        <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid #e2e8f0" }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#111827" }}>Fleet Map</h2>
           <p style={{ margin: "2px 0 0", fontSize: 13, color: "#6b7280" }}>
             Live vehicle positions &amp; status
@@ -414,7 +414,7 @@ export default function VramsMap() {
         </div>
 
         {/* Vehicle list */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
           {vehiclesLoading ? (
             <p style={{ padding: 24, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>Loading vehicles…</p>
           ) : vehicles.length === 0 ? (

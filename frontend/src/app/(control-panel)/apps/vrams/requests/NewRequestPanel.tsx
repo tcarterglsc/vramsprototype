@@ -71,9 +71,9 @@ function NewRequestPanel({ onClose }: Props) {
 	}
 
 	return (
-		<div className="flex flex-col h-full bg-white">
+		<div className="flex flex-col h-full bg-slate-50">
 			{/* Header */}
-			<div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+			<div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white">
 				<div className="flex items-center gap-2">
 					<div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center text-sm">📝</div>
 					<span className="font-semibold text-gray-900">New Request</span>
@@ -88,10 +88,7 @@ function NewRequestPanel({ onClose }: Props) {
 			</div>
 
 			{/* Form body */}
-			<form
-				onSubmit={handleSubmit(onSubmit)}
-				className="flex-1 overflow-y-auto px-5 py-4 space-y-4"
-			>
+			<form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 				{/* Requester */}
 				<Field
 					label="Requester"
@@ -311,7 +308,7 @@ function NewRequestPanel({ onClose }: Props) {
 			</form>
 
 			{/* Footer actions */}
-			<div className="border-t border-gray-100 p-4 flex gap-3">
+			<div className="border-t border-slate-200 bg-white p-4 flex gap-3">
 				<button
 					type="button"
 					onClick={onClose}

@@ -4,6 +4,7 @@ import { useGetVramsRequestsQuery } from '../VramsApi';
 import type { VramsRequest } from '../types';
 import NewRequestPanel from './NewRequestPanel';
 import ReviewPanel from './ReviewPanel';
+import { VramsCard, VramsHeader } from '../components/VramsUi';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, string> = {
@@ -82,27 +83,77 @@ function VramsRequests() {
 	return (
 		<div className="flex h-full">
 			{/* Main content */}
-			<div className={`flex-1 min-w-0 p-8 transition-all ${panelOpen ? 'mr-0 lg:mr-[460px]' : ''}`}>
+			<div className={`flex-1 min-w-0 vrams-page transition-all ${panelOpen ? 'mr-0 lg:mr-[460px]' : ''}`}>
 				{/* Page header */}
-				<div className="flex items-start justify-between mb-7">
-					<div>
-						<h1 className="text-3xl font-bold text-gray-900">Requests Management</h1>
-						<p className="text-base text-gray-500 mt-1">Review, approve, and dispatch vehicle requests.</p>
+				<VramsHeader
+					title="Requests Management"
+					subtitle="Triage requests fast. Your queue defaults to the work that needs action."
+					actions={
+						<button
+							type="button"
+							onClick={openNew}
+							className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white text-base font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+								<path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+							</svg>
+							New Request
+						</button>
+					}
+				/>
+
+				{/* Alicia-style status tabs + chips */}
+				<div className="space-y-3 -mt-2">
+					<div className="flex items-center gap-2 overflow-x-auto">
+						{[
+							{ label: 'Needs review', value: 'pending' },
+							{ label: 'Approved', value: 'approved' },
+							{ label: 'Dispatched', value: 'dispatched' },
+							{ label: 'Rejected', value: 'rejected' },
+							{ label: 'All', value: '' }
+						].map((tab) => {
+							const active = statusFilter === tab.value;
+							return (
+								<button
+									key={tab.label}
+									type="button"
+									onClick={() => setStatusFilter(tab.value)}
+									className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
+										active ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+									}`}
+								>
+									{tab.label}
+								</button>
+							);
+						})}
 					</div>
-					<button
-						type="button"
-						onClick={openNew}
-						className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white text-base font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-							<path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-						</svg>
-						New Request
-					</button>
+					<div className="flex items-center gap-2 overflow-x-auto">
+						{[
+							{ label: 'Urgent', value: 'urgent' },
+							{ label: 'High', value: 'high' },
+							{ label: 'Normal', value: 'normal' }
+						].map((chip) => {
+							const active = priorityFilter === chip.value;
+							return (
+								<button
+									key={chip.value}
+									type="button"
+									onClick={() => setPriorityFilter(active ? '' : chip.value)}
+									className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
+										active
+											? 'bg-amber-50 border-amber-200 text-amber-700'
+											: 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+									}`}
+								>
+									{chip.label}
+								</button>
+							);
+						})}
+					</div>
 				</div>
 
 				{/* Filters + Table card */}
-				<div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+				<VramsCard className="overflow-hidden">
 					<div className="flex flex-wrap gap-3 px-6 py-4 border-b border-gray-100">
 						<div className="relative flex-1 min-w-[200px]">
 							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
@@ -218,7 +269,7 @@ function VramsRequests() {
 					<div className="px-6 py-4 border-t border-gray-100 text-sm text-gray-400">
 						Showing 1–{filtered.length} of {page?.total ?? 0} requests
 					</div>
-				</div>
+				</VramsCard>
 			</div>
 
 			{/* Right side panel */}

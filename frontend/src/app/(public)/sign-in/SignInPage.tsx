@@ -1,12 +1,22 @@
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
+import { useState } from 'react';
 import JwtLoginTab from './tabs/JwtSignInTab';
 
 /**
  * VRAMS Sign-in page — redesigned with fleet branding.
  */
 function SignInPage() {
+	const personas = [
+		{ name: 'Amani Kamau', subtitle: 'Fleet Manager · Operations', email: 'admin@vrams.org' },
+		{ name: 'John Doe', subtitle: 'Employee · Sales', email: 'john.doe@vrams.org' },
+		{ name: 'Mike Johnson', subtitle: 'Employee · Executive office', email: 'mike.johnson@vrams.org' },
+		{ name: 'James Mwangi', subtitle: 'Driver · Fleet · DRV-042', email: 'james.mwangi@vrams.org' },
+		{ name: 'Sarah Smith', subtitle: 'Employee · Logistics', email: 'sarah.smith@vrams.org' }
+	];
+	const [selectedEmail, setSelectedEmail] = useState('admin@vrams.org');
+
 	return (
 		<div className="flex min-w-0 flex-1 flex-col md:flex-row h-full">
 
@@ -58,8 +68,31 @@ function SignInPage() {
 						</div>
 					</Box>
 
+					<Box className="mb-24">
+						<Typography variant="caption" color="text.secondary" fontWeight={700} className="block mb-10">
+							OR PICK A DEMO PERSONA
+						</Typography>
+						<div className="space-y-8">
+							{personas.map((p) => (
+								<button
+									key={p.email}
+									type="button"
+									onClick={() => setSelectedEmail(p.email)}
+									className={`w-full text-left rounded-xl border px-12 py-10 transition-colors ${
+										selectedEmail === p.email
+											? 'border-indigo-300 bg-indigo-50'
+											: 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+									}`}
+								>
+									<p className="text-sm font-bold text-slate-900">{p.name}</p>
+									<p className="text-xs text-slate-600 mt-2">{p.subtitle}</p>
+								</button>
+							))}
+						</div>
+					</Box>
+
 					{/* Form */}
-					<JwtLoginTab />
+					<JwtLoginTab initialEmail={selectedEmail} initialPassword="Password123!" />
 
 					{/* Footer */}
 					<Typography variant="caption" color="text.disabled" className="mt-24 block text-center">

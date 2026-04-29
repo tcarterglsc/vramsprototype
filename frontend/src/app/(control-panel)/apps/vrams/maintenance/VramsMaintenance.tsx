@@ -12,6 +12,7 @@ import {
 	useGetVramsVehiclesQuery
 } from '../VramsApi';
 import type { MaintenanceLog } from '../types';
+import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
 
 const schema = z.object({
 	vehicle_id: z.coerce.number().min(1),
@@ -88,14 +89,12 @@ function VramsMaintenance() {
 	}
 
 	return (
-		<div className="p-8 space-y-8">
+		<VramsPage>
 			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-gray-900">Service &amp; Maintenance</h1>
-				<p className="text-base text-gray-500 mt-1">
-					Track service history, log new maintenance records, and monitor upcoming due dates.
-				</p>
-			</div>
+			<VramsHeader
+				title="Service & Maintenance"
+				subtitle="Track service history, log new maintenance records, and monitor upcoming due dates."
+			/>
 
 			{/* Stat cards */}
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
@@ -118,7 +117,7 @@ function VramsMaintenance() {
 			{/* Main layout: Table + Log a Service sidebar */}
 			<div className="flex gap-6 items-start">
 				{/* Service History table */}
-				<div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+				<VramsCard className="flex-1 min-w-0 overflow-hidden">
 					<div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
 						<div className="flex items-center gap-3">
 							<span className="text-2xl">📋</span>
@@ -199,10 +198,10 @@ function VramsMaintenance() {
 					<div className="px-6 py-4 border-t border-gray-100 text-sm text-gray-400">
 						Showing {filtered.length} of {page?.total ?? 0} records
 					</div>
-				</div>
+				</VramsCard>
 
 				{/* Log a Service sidebar */}
-				<div className="w-88 flex-shrink-0 bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ width: 360 }}>
+				<VramsCard className="w-88 flex-shrink-0 overflow-hidden" style={{ width: 360 }}>
 					<div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
 						<div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl">🔧</div>
 						<div>
@@ -251,9 +250,9 @@ function VramsMaintenance() {
 							</Button>
 						</div>
 					</form>
-				</div>
+				</VramsCard>
 			</div>
-		</div>
+		</VramsPage>
 	);
 }
 

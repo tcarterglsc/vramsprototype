@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { useGetVramsVehicleQuery } from '../../VramsApi';
+import { useSnackbar } from 'notistack';
+import { useGetVramsVehicleQuery, useGetVramsDriversQuery, useUpdateVramsVehicleMutation } from '../../VramsApi';
 import VehicleIllustration from '../../components/VehicleIllustration';
 import OverviewTab from './tabs/OverviewTab';
 import ServiceHistoryTab from './tabs/ServiceHistoryTab';
 import StatusLogTab from './tabs/StatusLogTab';
 import BookingsTab from './tabs/BookingsTab';
 import ChangeStatusModal from './ChangeStatusModal';
+import { VramsCard, VramsPage } from '../../components/VramsUi';
 
 const TABS = [
 	{ value: 'overview', label: 'Overview' },
@@ -32,9 +34,30 @@ function StatusBadge({ status }: { status: string }) {
 function VehicleProfile() {
 	const { vehicleId } = useParams<{ vehicleId: string }>();
 	const navigate = useNavigate();
+	const { enqueueSnackbar } = useSnackbar();
 	const [tab, setTab] = useState('overview');
 	const [statusModalOpen, setStatusModalOpen] = useState(false);
+	const [assignDriverId, setAssignDriverId] = useState<string>('');
 	const { data: vehicle, isLoading } = useGetVramsVehicleQuery(Number(vehicleId));
+	const { data: drivers = [] } = useGetVramsDriversQuery();
+	const [updateVehicle, { isLoading: isAssigning }] = useUpdateVramsVehicleMutation();
+
+	useEffect(() => {
+		setAssignDriverId(vehicle?.default_driver?.id ? String(vehicle.default_driver.id) : '');
+	}, [vehicle?.id, vehicle?.default_driver?.id]);
+
+	async function handleAssignDriver() {
+		if (!vehicle) return;
+		try {
+			await updateVehicle({
+				id: vehicle.id,
+				default_driver_id: assignDriverId ? Number(assignDriverId) : null
+			}).unwrap();
+			enqueueSnackbar('Driver assignment updated.', { variant: 'success' });
+		} catch {
+			enqueueSnackbar('Failed to update driver assignment.', { variant: 'error' });
+		}
+	}
 
 	if (isLoading) {
 		return <div className="flex items-center justify-center h-64 text-gray-400 text-base">Loading vehicle…</div>;
@@ -44,9 +67,9 @@ function VehicleProfile() {
 	}
 
 	return (
-		<div className="p-8 space-y-6">
+		<VramsPage className="space-y-6">
 			{/* Vehicle header bar */}
-			<div className="bg-white rounded-2xl border border-gray-200 px-6 py-5 flex items-center gap-5 flex-wrap">
+			<VramsCard className="px-6 py-5 flex items-center gap-5 flex-wrap">
 				<div className="w-36 flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl px-3 py-2 flex items-center justify-center">
 					<VehicleIllustration
 						vehicleType={vehicle.vehicle_type}
@@ -88,10 +111,41 @@ function VehicleProfile() {
 						✕
 					</button>
 				</div>
-			</div>
+			</VramsCard>
+
+			<VramsCard className="px-6 py-5">
+				<div className="flex items-center justify-between gap-3 flex-wrap">
+					<div>
+						<p className="text-lg font-bold text-gray-900">Assign Driver to Vehicle</p>
+						<p className="text-sm text-gray-500">Set or change the vehicle&apos;s default driver.</p>
+					</div>
+					<button
+						type="button"
+						onClick={handleAssignDriver}
+						disabled={isAssigning}
+						className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
+					>
+						{isAssigning ? 'Saving...' : 'Save Assignment'}
+					</button>
+				</div>
+				<div className="mt-4 max-w-md">
+					<select
+						value={assignDriverId}
+						onChange={(e) => setAssignDriverId(e.target.value)}
+						className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+					>
+						<option value="">Unassigned</option>
+						{drivers.map((d) => (
+							<option key={d.id} value={d.id}>
+								{d.name} {d.driver_id_code ? `- ${d.driver_id_code}` : ''}
+							</option>
+						))}
+					</select>
+				</div>
+			</VramsCard>
 
 			{/* Tab bar + content */}
-			<div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+			<VramsCard className="overflow-hidden">
 				<div className="flex border-b border-gray-200 px-2">
 					{TABS.map((t) => (
 						<button
@@ -118,12 +172,12 @@ function VehicleProfile() {
 					{tab === 'log' && <StatusLogTab vehicleId={vehicle.id} />}
 					{tab === 'bookings' && <BookingsTab vehicleId={vehicle.id} />}
 				</div>
-			</div>
+			</VramsCard>
 
 			{statusModalOpen && (
 				<ChangeStatusModal vehicle={vehicle} onClose={() => setStatusModalOpen(false)} />
 			)}
-		</div>
+		</VramsPage>
 	);
 }
 

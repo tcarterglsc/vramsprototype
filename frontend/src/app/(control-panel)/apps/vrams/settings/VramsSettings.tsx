@@ -27,8 +27,11 @@ import type { VramsUser } from '../types';
 
 const Root = styled(FusePageSimple)(({ theme }) => ({
 	'& .FusePageSimple-header': {
-		backgroundColor: theme.vars.palette.background.paper,
+		background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
 		boxShadow: `inset 0 -1px 0 0px ${theme.vars.palette.divider}`
+	},
+	'& .FusePageSimple-content': {
+		backgroundColor: '#f8fafc'
 	}
 }));
 
@@ -177,7 +180,7 @@ function VramsSettings() {
 			content={
 				<div className="p-24 max-w-3xl">
 					{tab === 'profile' && (
-						<Paper className="p-24 rounded-xl" elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+						<Paper className="p-24 rounded-xl vrams-card" elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
 							<Typography variant="subtitle1" fontWeight={600} className="mb-16">Profile Settings</Typography>
 							<div className="flex items-center gap-16 mb-20">
 								<Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: 24 }}>AU</Avatar>
@@ -200,7 +203,7 @@ function VramsSettings() {
 					)}
 
 					{tab === 'org' && (
-						<Paper className="p-24 rounded-xl" elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+						<Paper className="p-24 rounded-xl vrams-card" elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
 							<Typography variant="subtitle1" fontWeight={600} className="mb-16">Organisation Settings</Typography>
 							<div className="space-y-14">
 								<TextField label="Organisation Name" defaultValue="GL&SC Fleet" fullWidth size="small" />

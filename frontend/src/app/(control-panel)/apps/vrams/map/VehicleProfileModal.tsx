@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { useSnackbar } from "notistack";
 import type { Vehicle, Dispatch, VramsRequest, VramsUser } from "../types/index";
 import VehicleIllustration from "../components/VehicleIllustration";
 import {
   useGetVramsDispatchPendingQuery,
   useGetVramsDriversQuery,
   useAssignVramsDispatchMutation,
+  useUpdateVramsVehicleMutation,
 } from "../VramsApi";
 
 /* ── constants ─────────────────────────────────────────────────── */
@@ -282,7 +284,17 @@ interface Props {
 
 export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }: Props) {
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const [view, setView] = useState<"details" | "dispatch">("details");
+  const [selectedDriverId, setSelectedDriverId] = useState<number | "">("");
+  const { data: drivers = [] } = useGetVramsDriversQuery();
+  const [updateVehicle, { isLoading: isReassigning }] = useUpdateVramsVehicleMutation();
+
+  useEffect(() => {
+    setSelectedDriverId(
+      open && vehicle ? (dispatch?.driver?.id ?? vehicle.default_driver?.id ?? "") : ""
+    );
+  }, [open, vehicle, dispatch]);
 
   if (!open || !vehicle) return null;
 
@@ -292,6 +304,19 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
   function handleClose() {
     setView("details");
     onClose();
+  }
+
+  async function handleReassignDriver() {
+    if (!vehicle || !selectedDriverId) {
+      enqueueSnackbar("Select a driver first.", { variant: "warning" });
+      return;
+    }
+    try {
+      await updateVehicle({ id: vehicle.id, default_driver_id: Number(selectedDriverId) }).unwrap();
+      enqueueSnackbar(dispatch ? "Task reassigned to selected driver." : "Default driver updated.", { variant: "success" });
+    } catch {
+      enqueueSnackbar("Failed to update driver assignment.", { variant: "error" });
+    }
   }
 
   return (
@@ -403,6 +428,52 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
                   </div>
                 </div>
               )}
+
+              {/* Reassign task / default driver */}
+              <div style={{ background: "#f8fafc", borderRadius: 12, padding: "12px 14px" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {dispatch ? "Reassign Task Driver" : "Assign Default Driver"}
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <select
+                    value={selectedDriverId}
+                    onChange={(e) => setSelectedDriverId(e.target.value ? Number(e.target.value) : "")}
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      color: "#374151",
+                      background: "#fff",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">— Select driver —</option>
+                    {drivers.map((d: VramsUser) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}{d.driver_id_code ? ` (${d.driver_id_code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleReassignDriver}
+                    disabled={isReassigning || !selectedDriverId}
+                    style={{
+                      padding: "10px 12px",
+                      background: isReassigning || !selectedDriverId ? "#e2e8f0" : "#1d4ed8",
+                      color: isReassigning || !selectedDriverId ? "#94a3b8" : "#fff",
+                      border: "none",
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: isReassigning || !selectedDriverId ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {dispatch ? "Reassign" : "Assign"}
+                  </button>
+                </div>
+              </div>
 
               {/* Specs */}
               <div>
