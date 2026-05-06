@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -m venv venv)"
+      "Bash(python3 -m venv venv)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
+      "Bash(npx tsc *)"
     ]
   }
 }
