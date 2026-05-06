@@ -9,7 +9,6 @@ class DispatchStatus(str, enum.Enum):
     delayed = "delayed"
     cancelled = "cancelled"
 
-
 class Dispatch(db.Model):
     __tablename__ = "dispatches"
 

@@ -21,8 +21,8 @@ def create_app(config_name: str = None) -> Flask:
     os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)
 
     # Register blueprints
-    from .routes.auth import auth_bp
-    from .routes.vrams import vrams_bp
+    from .controllers.auth_controller import auth_bp
+    from .controllers.vrams_controller import vrams_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(vrams_bp, url_prefix="/api/vrams")
