@@ -14,6 +14,7 @@ class UserSchema(Schema):
     driver_id_code = fields.Str()
     total_trips = fields.Int()
     created_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
 
 
 class VehicleDocumentSchema(Schema):
@@ -24,6 +25,7 @@ class VehicleDocumentSchema(Schema):
     file_name = fields.Str()
     expires_at = fields.Date()
     uploaded_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
 
 
 class VehicleSchema(Schema):
@@ -40,7 +42,7 @@ class VehicleSchema(Schema):
     engine_size = fields.Str()
     color = fields.Str()
     odometer_km = fields.Int()
-    status = fields.Str()
+    status = fields.Function(lambda obj: obj.status.value if getattr(obj, "status", None) is not None and hasattr(obj.status, "value") else obj.status)
     bookable = fields.Bool()
     notes = fields.Str()
     fitness_expiry = fields.Date()
@@ -50,6 +52,7 @@ class VehicleSchema(Schema):
     documents = fields.List(fields.Nested(VehicleDocumentSchema), dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
 
 
 class RequestSchema(Schema):
@@ -64,13 +67,14 @@ class RequestSchema(Schema):
     return_at = fields.DateTime()
     priority = fields.Str()
     passenger_count = fields.Int()
-    status = fields.Str(dump_only=True)
+    status = fields.Function(lambda obj: obj.status.value if getattr(obj, "status", None) is not None and hasattr(obj.status, "value") else obj.status, dump_only=True)
     rejection_reason = fields.Str(dump_only=True)
     vehicle = fields.Nested(VehicleSchema, dump_only=True)
     approved_by = fields.Nested(UserSchema, dump_only=True)
     approved_at = fields.DateTime(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
 
 
 class MaintenanceLogSchema(Schema):
@@ -87,16 +91,27 @@ class MaintenanceLogSchema(Schema):
     notes = fields.Str()
     logged_by = fields.Nested(UserSchema, dump_only=True)
     created_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
 
 
 class StatusLogSchema(Schema):
     id = fields.Int(dump_only=True)
     vehicle_id = fields.Int(dump_only=True)
     changed_by = fields.Nested(UserSchema, dump_only=True)
-    from_status = fields.Str(dump_only=True)
-    to_status = fields.Str(dump_only=True)
+    from_status = fields.Function(lambda obj: obj.from_status.value if getattr(obj, "from_status", None) is not None and hasattr(obj.from_status, "value") else obj.from_status, dump_only=True)
+    to_status = fields.Function(lambda obj: obj.to_status.value if getattr(obj, "to_status", None) is not None and hasattr(obj.to_status, "value") else obj.to_status, dump_only=True)
     reason = fields.Str()
     changed_at = fields.DateTime(dump_only=True)
+
+
+class VramsNotificationSchema(Schema):
+    id = fields.Int(dump_only=True)
+    title = fields.Str()
+    body = fields.Str()
+    category = fields.Str()
+    link = fields.Str()
+    read_at = fields.DateTime(dump_only=True)
+    created_at = fields.DateTime(dump_only=True)
 
 
 class DispatchSchema(Schema):
@@ -109,6 +124,15 @@ class DispatchSchema(Schema):
     driver = fields.Nested(UserSchema, dump_only=True)
     dispatched_at = fields.DateTime(dump_only=True)
     returned_at = fields.DateTime(dump_only=True)
-    status = fields.Str(dump_only=True)
+    status = fields.Function(lambda obj: obj.status.value if getattr(obj, "status", None) is not None and hasattr(obj.status, "value") else obj.status, dump_only=True)
     delay_reason = fields.Str()
     created_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
+
+
+class OrganizationSettingsSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.Str(required=True)
+    support_email = fields.Email(allow_none=True)
+    logo_url = fields.Str(allow_none=True)
+    updated_at = fields.DateTime(dump_only=True)

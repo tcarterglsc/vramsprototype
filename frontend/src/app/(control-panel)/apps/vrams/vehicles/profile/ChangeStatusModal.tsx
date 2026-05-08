@@ -7,7 +7,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Radio from '@mui/material/Radio';
 import TextField from '@mui/material/TextField';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSnackbar } from 'notistack';
 import { useUpdateVramsVehicleStatusMutation } from '../../VramsApi';
 import type { VehicleStatus } from '../../types';
@@ -19,6 +19,12 @@ function ChangeStatusModal({ vehicleId, currentStatus, open, onClose }: Props) {
 	const [newStatus, setNewStatus] = useState<VehicleStatus>(currentStatus);
 	const [reason, setReason] = useState('');
 	const [updateStatus, { isLoading }] = useUpdateVramsVehicleStatusMutation();
+
+	useEffect(() => {
+		if (!open) return;
+		setNewStatus(currentStatus);
+		setReason('');
+	}, [open, currentStatus]);
 
 	async function handleSave() {
 		try {

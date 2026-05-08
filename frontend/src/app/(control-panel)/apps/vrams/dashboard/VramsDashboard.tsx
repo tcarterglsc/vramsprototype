@@ -1,12 +1,17 @@
 import { useNavigate } from 'react-router';
+import Skeleton from '@mui/material/Skeleton';
 import {
 	useGetVramsDashboardQuery,
 	useGetVramsRequestsQuery,
-	useGetVramsMaintenanceQuery
+	useGetVramsMaintenanceQuery,
+	useGetVramsReportSummaryQuery,
+	useGetVramsOperationalAlertsQuery,
+	useGetVramsAuditLogsQuery
 } from '../VramsApi';
 import type { VramsRequest, MaintenanceLog } from '../types';
 import { VramsCard, VramsPage } from '../components/VramsUi';
 import VehicleIllustration from '../components/VehicleIllustration';
+import { VramsListBlockSkeleton } from '../components/VramsLoadingSkeletons';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, string> = {
@@ -24,7 +29,7 @@ function StatusBadge({ status }: { status: string }) {
 function MiniBarChart({
 	data
 }: {
-	data: Array<{ label: string; value: number; color: string }>;
+	data: { label: string; value: number; color: string }[];
 }) {
 	const max = Math.max(...data.map((d) => d.value), 1);
 	return (
@@ -44,9 +49,12 @@ function MiniBarChart({
 
 function VramsDashboard() {
 	const navigate = useNavigate();
-	const { data: stats } = useGetVramsDashboardQuery();
-	const { data: requestsPage } = useGetVramsRequestsQuery({ per_page: 5, page: 1 });
-	const { data: maintenancePage } = useGetVramsMaintenanceQuery({ per_page: 5 });
+	const { data: stats, isLoading: loadStats } = useGetVramsDashboardQuery();
+	const { data: requestsPage, isLoading: loadRequests } = useGetVramsRequestsQuery({ per_page: 5, page: 1 });
+	const { data: maintenancePage, isLoading: loadMaint } = useGetVramsMaintenanceQuery({ page: 1 });
+	const { data: monthlyReport, isLoading: loadReport } = useGetVramsReportSummaryQuery();
+	const { data: alerts, isLoading: loadAlerts } = useGetVramsOperationalAlertsQuery();
+	const { data: auditPage, isLoading: loadAudit } = useGetVramsAuditLogsQuery({ per_page: 3, page: 1 });
 
 	const requests: VramsRequest[] = requestsPage?.items ?? [];
 	const maintenance: MaintenanceLog[] = maintenancePage?.items ?? [];
@@ -68,11 +76,15 @@ function VramsDashboard() {
 					<span className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-yellow-400" />
 					<p className="text-xs font-bold uppercase tracking-wider text-slate-600">Thursday, October 24</p>
 					<h1 className="mt-1 text-5xl font-bold text-slate-900 tracking-tight">Good morning.</h1>
-					<p className="mt-1.5 text-slate-700 text-base font-medium">
-						You have <span className="font-semibold text-slate-900">{(stats?.pending_requests ?? 0) + (stats?.overdue_services ?? 0)} items</span>{' '}
-						needing attention today —{' '}
-						<span className="font-semibold text-red-600">{stats?.pending_requests ?? 0} urgent</span>.
-					</p>
+					{loadStats ? (
+						<Skeleton variant="rounded" width="100%" height={28} animation="wave" className="mt-2 max-w-xl" />
+					) : (
+						<p className="mt-1.5 text-slate-700 text-base font-medium">
+							You have <span className="font-semibold text-slate-900">{(stats?.pending_requests ?? 0) + (stats?.overdue_services ?? 0)} items</span>{' '}
+							needing attention today —{' '}
+							<span className="font-semibold text-red-600">{stats?.pending_requests ?? 0} urgent</span>.
+						</p>
+					)}
 				</div>
 				<VramsCard className="px-4 py-3 w-full md:w-auto">
 					<p className="text-xs uppercase tracking-wider text-slate-600 font-bold">Yesterday</p>
@@ -94,7 +106,11 @@ function VramsDashboard() {
 								</button>
 							</div>
 							<div className="divide-y divide-slate-100">
-								{pending.length === 0 ? (
+								{loadRequests ? (
+									<div className="px-5 py-4">
+										<VramsListBlockSkeleton items={3} />
+									</div>
+								) : pending.length === 0 ? (
 									<div className="px-5 py-8 text-sm text-slate-400 text-center">No pending requests right now.</div>
 								) : (
 									pending.map((r) => (
@@ -125,11 +141,24 @@ function VramsDashboard() {
 
 						<VramsCard className="px-5 py-4 flex flex-col justify-between">
 							<div>
-								<p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Taxi Fallbacks — Last 30 Days</p>
-								<p className="text-2xl font-bold text-slate-900 mt-1">6 rides · KES 8,100 billed</p>
+								{loadReport ? (
+									<>
+										<Skeleton variant="text" width="55%" animation="wave" />
+										<Skeleton variant="text" width="90%" height={36} animation="wave" />
+										<Skeleton variant="text" width="70%" animation="wave" />
+									</>
+								) : (
+									<>
+										<p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Ops Summary — {monthlyReport?.month ?? 'Current Month'}</p>
+										<p className="text-2xl font-bold text-slate-900 mt-1">{monthlyReport?.dispatch_volume ?? 0} dispatches · KES {Math.round(monthlyReport?.maintenance_cost_kes ?? 0).toLocaleString()}</p>
+										<p className="text-xs text-slate-600 mt-1">
+											{monthlyReport?.requests_completed ?? 0} requests completed out of {monthlyReport?.request_volume ?? 0}
+										</p>
+									</>
+								)}
 							</div>
 							<button type="button" className="mt-4 px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 self-start">
-								Export to Finance →
+								Monthly report synced
 							</button>
 						</VramsCard>
 					</div>
@@ -141,32 +170,49 @@ function VramsDashboard() {
 								<p className="text-sm text-slate-600">Real-time health of your operations</p>
 							</div>
 							<div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-100">
-								{[
-									{ label: 'Available Vehicles', value: stats?.vehicles_available ?? 0, sub: `of ${stats?.vehicles_total ?? 0} total`, tone: 'text-emerald-600' },
-									{ label: 'On the Road', value: stats?.active_dispatches ?? 0, sub: 'active dispatches', tone: 'text-blue-600' },
-									{ label: 'Blocked', value: stats?.blocked_vehicles ?? 0, sub: 'expired docs', tone: 'text-red-600' },
-									{ label: 'Service Overdue', value: stats?.overdue_services ?? 0, sub: 'past due interval', tone: 'text-amber-600' }
-								].map((m) => (
-									<div key={m.label} className="px-4 py-4">
-										<p className="text-xs uppercase tracking-wider text-slate-500 font-bold">{m.label}</p>
-										<p className={`text-3xl font-bold mt-1 ${m.tone}`}>{m.value}</p>
-										<p className="text-sm text-slate-600">{m.sub}</p>
-									</div>
-								))}
+								{loadStats
+									? Array.from({ length: 4 }).map((_, i) => (
+										<div key={i} className="px-4 py-4">
+											<Skeleton variant="text" width="70%" animation="wave" />
+											<Skeleton variant="text" width="40%" height={40} animation="wave" />
+											<Skeleton variant="text" width="55%" animation="wave" />
+										</div>
+									))
+									: [
+										{ label: 'Available Vehicles', value: stats?.vehicles_available ?? 0, sub: `of ${stats?.vehicles_total ?? 0} total`, tone: 'text-emerald-600' },
+										{ label: 'On the Road', value: stats?.active_dispatches ?? 0, sub: 'active dispatches', tone: 'text-blue-600' },
+										{ label: 'Blocked', value: stats?.blocked_vehicles ?? 0, sub: 'expired docs', tone: 'text-red-600' },
+										{ label: 'Service Overdue', value: stats?.overdue_services ?? 0, sub: 'past due interval', tone: 'text-amber-600' }
+									].map((m) => (
+										<div key={m.label} className="px-4 py-4">
+											<p className="text-xs uppercase tracking-wider text-slate-500 font-bold">{m.label}</p>
+											<p className={`text-3xl font-bold mt-1 ${m.tone}`}>{m.value}</p>
+											<p className="text-sm text-slate-600">{m.sub}</p>
+										</div>
+									))}
 							</div>
 							<div className="p-4 space-y-2">
-								<div className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-3 py-2">
-									<p className="text-base text-red-700"><strong>{stats?.blocked_vehicles ?? 0}</strong> vehicles blocked from booking</p>
-									<button type="button" onClick={() => navigate('/apps/vrams/vehicles')} className="text-xs font-semibold text-red-700 hover:underline">
-										Review vehicles
-									</button>
-								</div>
-								<div className="flex items-center justify-between rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
-									<p className="text-base text-amber-700"><strong>{stats?.overdue_services ?? 0}</strong> services overdue</p>
-									<button type="button" onClick={() => navigate('/apps/vrams/maintenance')} className="text-xs font-semibold text-amber-700 hover:underline">
-										Book service
-									</button>
-								</div>
+								{loadAlerts ? (
+									<>
+										<Skeleton variant="rounded" height={48} animation="wave" />
+										<Skeleton variant="rounded" height={48} animation="wave" />
+									</>
+								) : (
+									<>
+										<div className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-3 py-2">
+											<p className="text-base text-red-700"><strong>{alerts?.blocked_vehicles?.length ?? stats?.blocked_vehicles ?? 0}</strong> vehicles blocked from booking</p>
+											<button type="button" onClick={() => navigate('/apps/vrams/vehicles')} className="text-xs font-semibold text-red-700 hover:underline">
+												Review vehicles
+											</button>
+										</div>
+										<div className="flex items-center justify-between rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
+											<p className="text-base text-amber-700"><strong>{alerts?.overdue_services?.length ?? stats?.overdue_services ?? 0}</strong> services overdue</p>
+											<button type="button" onClick={() => navigate('/apps/vrams/maintenance')} className="text-xs font-semibold text-amber-700 hover:underline">
+												Book service
+											</button>
+										</div>
+									</>
+								)}
 							</div>
 						</VramsCard>
 
@@ -174,19 +220,33 @@ function VramsDashboard() {
 							<VramsCard className="p-5">
 								<p className="text-lg font-bold text-slate-900">Request Flow (This Week)</p>
 								<p className="text-sm text-slate-600 mb-4">Approved, dispatched, completed and rejected trends</p>
-								<MiniBarChart
-									data={[
-										{ label: 'Approved', value: approvedCount, color: '#4f46e5' },
-										{ label: 'Dispatched', value: dispatchedCount, color: '#2563eb' },
-										{ label: 'Completed', value: completedCount, color: '#16a34a' },
-										{ label: 'Rejected', value: rejectedCount, color: '#dc2626' }
-									]}
-								/>
+								{loadRequests ? (
+									<Skeleton variant="rounded" height={144} animation="wave" />
+								) : (
+									<MiniBarChart
+										data={[
+											{ label: 'Approved', value: approvedCount, color: '#4f46e5' },
+											{ label: 'Dispatched', value: dispatchedCount, color: '#2563eb' },
+											{ label: 'Completed', value: completedCount, color: '#16a34a' },
+											{ label: 'Rejected', value: rejectedCount, color: '#dc2626' }
+										]}
+									/>
+								)}
 							</VramsCard>
 
 							<VramsCard className="p-5">
 								<p className="text-lg font-bold text-slate-900">Priority Mix</p>
 								<p className="text-sm text-slate-600 mb-4">Distribution of request urgency levels</p>
+								{loadRequests ? (
+									<div className="flex items-center gap-5">
+										<Skeleton variant="circular" width={144} height={144} animation="wave" />
+										<div className="space-y-2 flex-1">
+											<Skeleton variant="text" animation="wave" />
+											<Skeleton variant="text" animation="wave" />
+											<Skeleton variant="text" animation="wave" />
+										</div>
+									</div>
+								) : (
 								<div className="flex items-center gap-5">
 									<div
 										className="w-36 h-36 rounded-full border border-slate-200"
@@ -200,6 +260,7 @@ function VramsDashboard() {
 										<div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-slate-500" /> <span className="text-slate-700 font-semibold">Normal:</span> <span className="text-slate-900 font-bold">{normalCount}</span></div>
 									</div>
 								</div>
+								)}
 							</VramsCard>
 						</div>
 					</div>
@@ -218,8 +279,17 @@ function VramsDashboard() {
 							<p className="text-sm font-bold uppercase tracking-wider text-slate-200">Driver on Duty</p>
 							<span className="text-[11px] bg-white/15 rounded-full px-2 py-0.5">Active</span>
 						</div>
+						{loadRequests ? (
+							<>
+								<Skeleton variant="text" width="80%" height={28} animation="wave" sx={{ bgcolor: 'rgba(255,255,255,0.12)', mt: 1 }} />
+								<Skeleton variant="text" width="60%" animation="wave" sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+							</>
+						) : (
+							<>
 						<p className="mt-2 text-lg font-bold">{leadDispatch?.requester?.name ?? 'Driver not assigned'}</p>
 						<p className="text-sm text-slate-200 mt-0.5">{leadDispatch?.destination ?? 'No active route'}</p>
+							</>
+						)}
 						<div className="mt-3 flex gap-2">
 							<button type="button" className="flex-1 rounded-lg bg-white text-slate-900 text-sm font-bold py-2">Call</button>
 							<button type="button" className="flex-1 rounded-lg border border-white/40 text-white text-sm font-bold py-2">Message</button>
@@ -232,7 +302,9 @@ function VramsDashboard() {
 							<p className="text-sm text-slate-600">Next 7 days</p>
 						</div>
 						<div className="p-3 space-y-2">
-							{maintenance.length === 0 ? (
+							{loadMaint ? (
+								<VramsListBlockSkeleton items={3} />
+							) : maintenance.length === 0 ? (
 								<p className="text-sm text-slate-400 px-1 py-2">No upcoming services.</p>
 							) : (
 								maintenance.slice(0, 3).map((m) => (
@@ -271,6 +343,27 @@ function VramsDashboard() {
 							<button type="button" onClick={() => navigate('/apps/vrams/vehicles')} className="flex-1 rounded-lg border border-red-200 text-xs font-semibold text-red-600 py-2 hover:bg-red-50">
 								Out of service
 							</button>
+						</div>
+					</VramsCard>
+					<VramsCard className="overflow-hidden">
+						<div className="px-4 py-3 border-b border-slate-100">
+							<p className="text-base font-bold text-slate-900">Recent Audit Activity</p>
+							<p className="text-sm text-slate-600">Latest sensitive operational changes</p>
+						</div>
+						<div className="p-3 space-y-2">
+							{loadAudit ? (
+								<VramsListBlockSkeleton items={3} />
+							) : (auditPage?.items ?? []).length === 0 ? (
+								<p className="text-sm text-slate-400 px-1 py-2">No recent audit activity.</p>
+							) : (
+								(auditPage?.items ?? []).map((log) => (
+									<div key={log.id} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+										<p className="text-xs uppercase tracking-wide text-slate-500">{log.entity_type}</p>
+										<p className="text-sm font-semibold text-slate-800">{log.action.split('_').join(' ')}</p>
+										<p className="text-xs text-slate-500">{new Date(log.created_at).toLocaleString()}</p>
+									</div>
+								))
+							)}
 						</div>
 					</VramsCard>
 				</aside>

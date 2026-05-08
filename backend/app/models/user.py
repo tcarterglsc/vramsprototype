@@ -25,6 +25,8 @@ class User(db.Model):
     driver_id_code = db.Column(db.String(20))
     total_trips = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     requests = db.relationship("Request", foreign_keys="Request.requester_id", back_populates="requester", lazy="dynamic")
     dispatches = db.relationship("Dispatch", foreign_keys="Dispatch.driver_id", back_populates="driver", lazy="dynamic")

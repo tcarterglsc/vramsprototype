@@ -1,11 +1,18 @@
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { useSnackbar } from 'notistack';
 import Switch from '@mui/material/Switch';
-import { useCreateVramsVehicleMutation, useGetVramsDriversQuery } from '../../VramsApi';
+import { API_BASE_URL } from '@/utils/apiFetch';
+import {
+	useCreateVramsVehicleMutation,
+	useGetVramsDriversQuery,
+	useGetVramsVehicleQuery,
+	useUpdateVramsVehicleMutation,
+	useUploadVramsVehicleDocumentMutation
+} from '../../VramsApi';
 import VehicleIllustration from '../../components/VehicleIllustration';
 import { VramsCard, VramsHeader, VramsPage } from '../../components/VramsUi';
 
@@ -109,9 +116,31 @@ function SectionHeader({ num, label, icon }: { num: string; label: string; icon:
 }
 
 /** Upload zone */
-function UploadZone({ label }: { label: string }) {
+function UploadZone({
+	label,
+	file,
+	onFileChange,
+	existingFileName
+}: {
+	label: string;
+	file: File | null;
+	onFileChange: (file: File | null) => void;
+	existingFileName?: string;
+}) {
+	const inputId = `upload-${label.replace(/\s+/g, '-').toLowerCase()}`;
+	const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file]);
+	const isImage = !!file && file.type.startsWith('image/');
+	const isPdf = !!file && file.type === 'application/pdf';
+
 	return (
-		<div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-2 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+		<label htmlFor={inputId} className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-2 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+			<input
+				id={inputId}
+				type="file"
+				accept=".jpg,.jpeg,.png,.pdf"
+				className="hidden"
+				onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+			/>
 			<div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -136,25 +165,87 @@ function UploadZone({ label }: { label: string }) {
 				<p className="text-xs text-gray-400">JPG, PNG, PDF — up to 5MB</p>
 			</div>
 			<p className="text-xs font-semibold text-gray-600">{label}</p>
-		</div>
+			{(file || existingFileName) && (
+				<div className="w-full mt-1 space-y-2">
+					{file ? (
+						<>
+							<p className="text-xs text-green-700 font-medium truncate max-w-full">
+								Selected: {file.name}
+							</p>
+							<div className="w-full rounded-lg border border-slate-200 bg-white p-2">
+								{isImage && previewUrl ? (
+									<img src={previewUrl} alt={`${label} preview`} className="w-full h-36 object-cover rounded-md" />
+								) : isPdf && previewUrl ? (
+									<div className="h-36 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-xs text-slate-600 font-semibold">
+										📄 PDF selected
+									</div>
+								) : (
+									<div className="h-36 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-xs text-slate-500">
+										File ready to upload
+									</div>
+								)}
+							</div>
+						</>
+					) : existingFileName ? (
+						<p className="text-xs text-slate-600 font-medium truncate max-w-full">
+							Current file: {existingFileName}
+						</p>
+					) : null}
+				</div>
+			)}
+		</label>
 	);
 }
 
 function VehicleRegister() {
+	const { vehicleId } = useParams<{ vehicleId: string }>();
+	const isEditMode = Boolean(vehicleId);
 	const navigate = useNavigate();
 	const { enqueueSnackbar } = useSnackbar();
 	const [createVehicle, { isLoading }] = useCreateVramsVehicleMutation();
+	const [updateVehicle, { isLoading: isUpdating }] = useUpdateVramsVehicleMutation();
+	const [uploadDocument] = useUploadVramsVehicleDocumentMutation();
 	const { data: drivers } = useGetVramsDriversQuery();
+	const { data: existingVehicle } = useGetVramsVehicleQuery(Number(vehicleId), { skip: !isEditMode });
+	const [fitnessFile, setFitnessFile] = useState<File | null>(null);
+	const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
+	const [carPhotoFile, setCarPhotoFile] = useState<File | null>(null);
 
 	const {
 		control,
 		handleSubmit,
+		reset,
 		watch,
 		formState: { errors }
 	} = useForm<FormValues>({
 		resolver: zodResolver(schema),
 		defaultValues: { status: 'available', bookable: true }
 	});
+
+	useEffect(() => {
+		if (!isEditMode || !existingVehicle) return;
+		reset({
+			plate: existingVehicle.plate,
+			vin: existingVehicle.vin ?? '',
+			make: existingVehicle.make,
+			model: existingVehicle.model,
+			year: existingVehicle.year,
+			vehicle_type: existingVehicle.vehicle_type,
+			fuel_type: existingVehicle.fuel_type,
+			transmission: existingVehicle.transmission ?? '',
+			seating_capacity: existingVehicle.seating_capacity,
+			engine_size: existingVehicle.engine_size ?? '',
+			color: existingVehicle.color ?? '',
+			odometer_km: existingVehicle.odometer_km,
+			fitness_expiry: existingVehicle.fitness_expiry ?? '',
+			insurance_expiry: existingVehicle.insurance_expiry ?? '',
+			next_service_date: existingVehicle.next_service_date ?? '',
+			status: existingVehicle.status === 'dispatched' ? 'in_service' : existingVehicle.status,
+			bookable: existingVehicle.bookable,
+			default_driver_id: existingVehicle.default_driver?.id,
+			notes: existingVehicle.notes ?? ''
+		});
+	}, [isEditMode, existingVehicle, reset]);
 
 	const selectedColor    = watch('color');
 	const previewType      = useWatch({ control, name: 'vehicle_type' });
@@ -163,14 +254,66 @@ function VehicleRegister() {
 	const previewModel     = useWatch({ control, name: 'model' });
 	const previewYear      = useWatch({ control, name: 'year' });
 	const previewStatus    = useWatch({ control, name: 'status' });
+	const carPhotoPreviewUrl = useMemo(() => (carPhotoFile ? URL.createObjectURL(carPhotoFile) : ''), [carPhotoFile]);
+	const existingPhotoUrl = useMemo(() => {
+		const raw = existingVehicle?.documents?.find((d) => d.doc_type === 'vehicle_photo')?.file_url;
+		if (!raw) return '';
+		return raw.startsWith('http') ? raw : `${API_BASE_URL}${raw}`;
+	}, [existingVehicle?.documents]);
+	const fitnessDoc = existingVehicle?.documents?.find((d) => d.doc_type === 'fitness_certificate');
+	const insuranceDoc = existingVehicle?.documents?.find((d) => d.doc_type === 'insurance');
 
 	async function onSubmit(values: FormValues) {
+		const invalidFile = [fitnessFile, insuranceFile, carPhotoFile].find((f) => f && f.size > 5 * 1024 * 1024);
+		if (invalidFile) {
+			enqueueSnackbar('Each document must be 5MB or smaller.', { variant: 'warning' });
+			return;
+		}
+
 		try {
-			await createVehicle(values).unwrap();
-			enqueueSnackbar('Vehicle registered successfully!', { variant: 'success' });
-			navigate('/apps/vrams/vehicles');
-		} catch {
-			enqueueSnackbar('Failed to register vehicle', { variant: 'error' });
+			const vehicle = isEditMode && existingVehicle
+				? await updateVehicle({ id: existingVehicle.id, ...values }).unwrap()
+				: await createVehicle(values).unwrap();
+
+			const uploads: Promise<unknown>[] = [];
+			if (fitnessFile) {
+				uploads.push(
+					uploadDocument({
+						vehicleId: vehicle.id,
+						doc_type: 'fitness_certificate',
+						expires_at: values.fitness_expiry || undefined,
+						file: fitnessFile
+					}).unwrap()
+				);
+			}
+			if (insuranceFile) {
+				uploads.push(
+					uploadDocument({
+						vehicleId: vehicle.id,
+						doc_type: 'insurance',
+						expires_at: values.insurance_expiry || undefined,
+						file: insuranceFile
+					}).unwrap()
+				);
+			}
+			if (carPhotoFile) {
+				uploads.push(
+					uploadDocument({
+						vehicleId: vehicle.id,
+						doc_type: 'vehicle_photo',
+						file: carPhotoFile
+					}).unwrap()
+				);
+			}
+			if (uploads.length > 0) {
+				await Promise.all(uploads);
+			}
+
+			enqueueSnackbar(isEditMode ? 'Vehicle updated successfully!' : 'Vehicle registered successfully!', { variant: 'success' });
+			navigate(isEditMode ? `/apps/vrams/vehicles/${vehicle.id}` : '/apps/vrams/vehicles');
+		} catch (error: any) {
+			const message = error?.data?.message || (isEditMode ? 'Failed to update vehicle' : 'Failed to register vehicle or upload documents');
+			enqueueSnackbar(message, { variant: 'error' });
 		}
 	}
 
@@ -186,11 +329,11 @@ function VehicleRegister() {
 					Vehicles
 				</button>
 				<span className="text-gray-300">/</span>
-				<span className="text-gray-900 font-medium">Register new vehicle</span>
+				<span className="text-gray-900 font-medium">{isEditMode ? 'Edit vehicle' : 'Register new vehicle'}</span>
 			</div>
 
 			{/* Page title */}
-			<VramsHeader title="Vehicle Management" subtitle="Add and configure fleet vehicles" />
+			<VramsHeader title="Vehicle Management" subtitle={isEditMode ? 'Edit and update fleet vehicle details' : 'Add and configure fleet vehicles'} />
 
 			{/* Two-column layout: form + action panel */}
 			<div className="flex gap-6 items-start">
@@ -200,9 +343,9 @@ function VehicleRegister() {
 					<div className="flex items-center gap-4 px-8 py-5 border-b border-gray-100">
 						<div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">🚗</div>
 						<div>
-							<p className="text-lg font-bold text-gray-900">Register new vehicle</p>
+							<p className="text-lg font-bold text-gray-900">{isEditMode ? 'Edit vehicle' : 'Register new vehicle'}</p>
 							<p className="text-sm text-gray-500">
-								Complete all required fields to add a vehicle to the fleet registry.
+								{isEditMode ? 'Update vehicle details and save changes to the fleet registry.' : 'Complete all required fields to add a vehicle to the fleet registry.'}
 							</p>
 						</div>
 					</div>
@@ -574,14 +717,28 @@ function VehicleRegister() {
 							</div>
 
 							{/* Upload zones */}
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+							<div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
 								<div>
 									<p className="text-xs font-semibold text-gray-600 mb-2">📄 Fitness Certificate Document</p>
-									<UploadZone label="Fitness Certificate" />
+									<UploadZone
+										label="Fitness Certificate"
+										file={fitnessFile}
+										onFileChange={setFitnessFile}
+										existingFileName={fitnessDoc?.file_name}
+									/>
 								</div>
 								<div>
 									<p className="text-xs font-semibold text-gray-600 mb-2">📄 Insurance Document</p>
-									<UploadZone label="Insurance Document" />
+									<UploadZone
+										label="Insurance Document"
+										file={insuranceFile}
+										onFileChange={setInsuranceFile}
+										existingFileName={insuranceDoc?.file_name}
+									/>
+								</div>
+								<div>
+									<p className="text-xs font-semibold text-gray-600 mb-2">📸 Vehicle Photo</p>
+									<UploadZone label="Car Picture" file={carPhotoFile} onFileChange={setCarPhotoFile} />
 								</div>
 							</div>
 						</section>
@@ -770,10 +927,10 @@ function VehicleRegister() {
 						<button
 							type="button"
 							onClick={handleSubmit(onSubmit)}
-							disabled={isLoading}
+							disabled={isLoading || isUpdating}
 							className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
 						>
-								{isLoading ? (
+								{(isLoading || isUpdating) ? (
 									<span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
 								) : (
 									<svg
@@ -789,14 +946,14 @@ function VehicleRegister() {
 										/>
 									</svg>
 								)}
-								Register Vehicle
+								{isEditMode ? 'Save Vehicle' : 'Register Vehicle'}
 							</button>
 						</div>
 					</div>
 				</VramsCard>
 
 				{/* Action sidebar */}
-				<div className="w-72 flex-shrink-0 space-y-5 sticky top-20">
+				<div className="w-96 flex-shrink-0 space-y-5 sticky top-20">
 
 					{/* ── Live vehicle preview ── */}
 					<VramsCard className="overflow-hidden">
@@ -804,12 +961,16 @@ function VehicleRegister() {
 							<p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preview</p>
 						</div>
 						{/* Illustration */}
-						<div className="bg-gradient-to-br from-slate-50 to-slate-100 px-6 py-4 flex items-center justify-center">
-							<VehicleIllustration
-								vehicleType={previewType || 'Sedan'}
-								color={selectedColor}
-								style={{ width: '100%', maxHeight: 90 }}
-							/>
+						<div className="bg-gradient-to-br from-slate-50 to-slate-100 px-6 py-5 min-h-[220px] flex items-center justify-center">
+							{(carPhotoPreviewUrl || existingPhotoUrl) ? (
+								<img src={carPhotoPreviewUrl || existingPhotoUrl} alt="Vehicle preview" className="w-full max-h-[210px] rounded-md object-cover" />
+							) : (
+								<VehicleIllustration
+									vehicleType={previewType || 'Sedan'}
+									color={selectedColor}
+									style={{ width: '100%', maxHeight: 180 }}
+								/>
+							)}
 						</div>
 						{/* Details */}
 						<div className="px-5 py-4 space-y-1.5">

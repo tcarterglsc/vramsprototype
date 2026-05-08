@@ -5,7 +5,7 @@ Seeds the database with demo data matching the prototype.
 from datetime import date, datetime, timezone, timedelta
 from app import create_app
 from app.extensions import db, bcrypt
-from app.models import User, Vehicle, Request, MaintenanceLog, Dispatch, UserRole, VehicleStatus, RequestStatus
+from app.models import User, Vehicle, Request, MaintenanceLog, Dispatch, UserRole, VehicleStatus, RequestStatus, OrganizationSettings
 from app.models.vehicle import VehicleStatusLog
 from app.models.dispatch import DispatchStatus
 
@@ -14,6 +14,9 @@ app = create_app()
 with app.app_context():
     db.drop_all()
     db.create_all()
+
+    db.session.add(OrganizationSettings(id=1, name="GL&SC Fleet", support_email="operations@glsc.example"))
+    db.session.flush()
 
     # ── Users ──────────────────────────────────────────────────────────────────
     def make_user(name, email, role, dept=None, phone=None, license_no=None, driver_code=None):

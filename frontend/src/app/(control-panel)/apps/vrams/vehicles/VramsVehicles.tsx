@@ -1,10 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import Switch from '@mui/material/Switch';
-import { useGetVramsVehiclesQuery } from '../VramsApi';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import { useSnackbar } from 'notistack';
+import { API_BASE_URL } from '@/utils/apiFetch';
+import { useDeleteVramsVehicleMutation, useGetVramsVehiclesQuery } from '../VramsApi';
 import type { Vehicle } from '../types';
 import VehicleIllustration from '../components/VehicleIllustration';
 import { VramsCard, VramsHeader, VramsMetricStrip, VramsPage } from '../components/VramsUi';
+import { VramsVehicleCardGridSkeleton } from '../components/VramsLoadingSkeletons';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, { label: string; cls: string }> = {
@@ -44,20 +52,30 @@ function ComplianceRow({ label, date }: { label: string; date?: string }) {
 	);
 }
 
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleCard({ vehicle, onDelete }: { vehicle: Vehicle; onDelete: (vehicle: Vehicle) => void }) {
 	const navigate = useNavigate();
+	const rawPhotoUrl = vehicle.documents?.find((d) => d.doc_type === 'vehicle_photo')?.file_url;
+	const photoUrl = rawPhotoUrl
+		? rawPhotoUrl.startsWith('http')
+			? rawPhotoUrl
+			: `${API_BASE_URL}${rawPhotoUrl}`
+		: '';
 	return (
 		<div
 			className="bg-white rounded-2xl border border-gray-200 p-5 cursor-pointer hover:shadow-md transition-shadow flex flex-col gap-4"
 			onClick={() => navigate(`/apps/vrams/vehicles/${vehicle.id}`)}
 		>
 			{/* Vehicle illustration */}
-			<div className="rounded-xl overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4 py-3">
-				<VehicleIllustration
-					vehicleType={vehicle.vehicle_type}
-					color={vehicle.color}
-					style={{ width: '100%', maxHeight: 80 }}
-				/>
+			<div className="rounded-xl overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-3 py-3 min-h-[150px]">
+				{photoUrl ? (
+					<img src={photoUrl} alt={`${vehicle.plate} vehicle`} className="w-full h-32 object-cover rounded-lg" />
+				) : (
+					<VehicleIllustration
+						vehicleType={vehicle.vehicle_type}
+						color={vehicle.color}
+						style={{ width: '100%', maxHeight: 120 }}
+					/>
+				)}
 			</div>
 
 			<div className="flex items-start justify-between">
@@ -91,9 +109,16 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
 				<button
 					type="button"
 					className="flex-1 py-2.5 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-					onClick={(e) => { e.stopPropagation(); navigate(`/apps/vrams/vehicles/${vehicle.id}`); }}
+					onClick={(e) => { e.stopPropagation(); navigate(`/apps/vrams/vehicles/${vehicle.id}/edit`); }}
 				>
 					Edit
+				</button>
+				<button
+					type="button"
+					className="px-3 py-2.5 text-sm font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+					onClick={(e) => { e.stopPropagation(); onDelete(vehicle); }}
+				>
+					Delete
 				</button>
 			</div>
 		</div>
@@ -102,10 +127,14 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
 
 function VramsVehicles() {
 	const navigate = useNavigate();
+	const { enqueueSnackbar } = useSnackbar();
+	const [deleteVehicle] = useDeleteVramsVehicleMutation();
 	const [status, setStatus] = useState('');
 	const [vehicleType, setVehicleType] = useState('');
 	const [bookableOnly, setBookableOnly] = useState(false);
 	const [q, setQ] = useState('');
+	const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+	const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
 
 	const { data: page, isLoading } = useGetVramsVehiclesQuery({
 		status: status || undefined,
@@ -119,6 +148,23 @@ function VramsVehicles() {
 	const available = vehicles.filter((v) => v.status === 'available').length;
 	const inService = vehicles.filter((v) => v.status === 'in_service').length;
 	const outOfService = vehicles.filter((v) => v.status === 'out_of_service').length;
+
+	async function handleDeleteVehicle(vehicle: Vehicle) {
+		setVehicleToDelete(vehicle);
+		setDeleteModalOpen(true);
+	}
+
+	async function confirmDeleteVehicle() {
+		if (!vehicleToDelete) return;
+		try {
+			await deleteVehicle(vehicleToDelete.id).unwrap();
+			enqueueSnackbar('Vehicle deleted.', { variant: 'success' });
+			setDeleteModalOpen(false);
+			setVehicleToDelete(null);
+		} catch {
+			enqueueSnackbar('Failed to delete vehicle.', { variant: 'error' });
+		}
+	}
 
 	return (
 		<VramsPage className="space-y-7">
@@ -191,11 +237,7 @@ function VramsVehicles() {
 
 			{/* Card Grid */}
 			{isLoading ? (
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-					{[...Array(6)].map((_, i) => (
-						<div key={i} className="bg-white rounded-2xl border border-gray-200 h-56 animate-pulse" />
-					))}
-				</div>
+				<VramsVehicleCardGridSkeleton count={6} />
 			) : vehicles.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-24 text-gray-400">
 					<span className="text-5xl mb-4">🚗</span>
@@ -204,13 +246,23 @@ function VramsVehicles() {
 			) : (
 				<>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-						{vehicles.map((v) => <VehicleCard key={v.id} vehicle={v} />)}
+						{vehicles.map((v) => <VehicleCard key={v.id} vehicle={v} onDelete={handleDeleteVehicle} />)}
 					</div>
 					<p className="text-sm text-gray-500 pt-1">
 						Showing 1–{vehicles.length} of {total} vehicles
 					</p>
 				</>
 			)}
+			<Dialog open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} maxWidth="xs" fullWidth>
+				<DialogTitle>Delete Vehicle</DialogTitle>
+				<DialogContent>
+					<p className="text-sm text-slate-600">Delete <strong>{vehicleToDelete?.plate ?? 'this vehicle'}</strong>? This cannot be undone.</p>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+					<Button color="error" variant="contained" onClick={confirmDeleteVehicle}>Delete</Button>
+				</DialogActions>
+			</Dialog>
 		</VramsPage>
 	);
 }

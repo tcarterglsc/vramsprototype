@@ -55,6 +55,9 @@ function JwtAuthProvider(props: FuseAuthProviderComponentProps) {
 			const accessToken = tokenStorageValue;
 
 			if (isTokenValid(accessToken)) {
+				// RTK Query uses globalHeaders; /me passes Authorization inline. Set early so parallel API calls
+				// (e.g. VRAMS dashboard) are authenticated while this request is in flight.
+				setGlobalHeaders({ Authorization: `Bearer ${accessToken}` });
 				try {
 					/**
 					 * Sign in with the token
@@ -79,12 +82,6 @@ function JwtAuthProvider(props: FuseAuthProviderComponentProps) {
 		if (!authState.isAuthenticated) {
 			attemptAutoLogin().then((userData) => {
 				if (userData) {
-					const storedToken = tokenStorageValue;
-
-					if (storedToken) {
-						setGlobalHeaders({ Authorization: `Bearer ${storedToken}` });
-					}
-
 					setAuthState({
 						authStatus: 'authenticated',
 						isAuthenticated: true,
@@ -170,7 +167,24 @@ function JwtAuthProvider(props: FuseAuthProviderComponentProps) {
 	 */
 	const updateUser: JwtAuthContextType['updateUser'] = useCallback(async (_user) => {
 		try {
-			return await authUpdateDbUser(_user);
+			const response = await authUpdateDbUser(_user);
+			const text = await response.text();
+			const clone = new Response(text, {
+				status: response.status,
+				headers: { 'Content-Type': response.headers.get('Content-Type') || 'application/json' }
+			});
+			if (response.ok && text) {
+				try {
+					const userData = JSON.parse(text) as User;
+					setAuthState((prev) => ({
+						...prev,
+						user: userData
+					}));
+				} catch {
+					/* ignore */
+				}
+			}
+			return clone;
 		} catch (error) {
 			console.error('Error updating user:', error);
 			return Promise.reject(error);

@@ -22,6 +22,8 @@ class Dispatch(db.Model):
     status = db.Column(db.Enum(DispatchStatus), nullable=False, default=DispatchStatus.en_route)
     delay_reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     request = db.relationship("Request", back_populates="dispatch")
     vehicle = db.relationship("Vehicle", back_populates="dispatches")

@@ -4,12 +4,14 @@ import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import useUser from '@auth/useUser';
 import './vramsTheme.css';
+import VramsNotificationsBell from './components/VramsNotificationsBell';
 
 const NAV_TABS = [
 	{ label: 'Dashboard', to: '/apps/vrams/dashboard', icon: '📊' },
 	{ label: 'Requests', to: '/apps/vrams/requests', icon: '📥' },
 	{ label: 'Maintenance', to: '/apps/vrams/maintenance', icon: '🛠' },
 	{ label: 'Vehicles', to: '/apps/vrams/vehicles', icon: '🚘' },
+	{ label: 'Documents', to: '/apps/vrams/documents', icon: '📄' },
 	{ label: 'Drivers', to: '/apps/vrams/drivers', icon: '🧑‍✈️' },
 	{ label: 'Dispatch', to: '/apps/vrams/dispatch', icon: '🚦' },
 	{ label: 'Map', to: '/apps/vrams/map', icon: '🗺' },
@@ -26,10 +28,10 @@ function VramsLayout() {
 
 	const visibleTabs = NAV_TABS.filter((tab) => {
 		if (role === 'driver') {
-			return ['/apps/vrams/map', '/apps/vrams/dispatch', '/apps/vrams/vehicles'].includes(tab.to);
+			return ['/apps/vrams/map', '/apps/vrams/dispatch', '/apps/vrams/vehicles', '/apps/vrams/documents'].includes(tab.to);
 		}
 		if (role === 'requester') {
-			return ['/apps/vrams/requests', '/apps/vrams/dashboard', '/apps/vrams/map'].includes(tab.to);
+			return ['/apps/vrams/requests', '/apps/vrams/dashboard', '/apps/vrams/map', '/apps/vrams/documents'].includes(tab.to);
 		}
 		return true;
 	});
@@ -140,7 +142,7 @@ function VramsLayout() {
 			</aside>
 
 			<main className="flex-1 min-w-0 flex flex-col">
-				<div className="h-14 border-b border-slate-200 bg-white/95 backdrop-blur-sm px-6 flex items-center justify-between">
+				<div className="h-14 border-b border-slate-200 bg-white/95 backdrop-blur-sm px-6 flex items-center justify-between gap-3">
 					<form className="w-full max-w-md" onSubmit={handleGlobalSearchSubmit}>
 						<input
 							type="text"
@@ -150,7 +152,10 @@ function VramsLayout() {
 							className="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
 						/>
 					</form>
-					<div className="ml-4 text-[11px] text-slate-500 whitespace-nowrap">Fleet Manager · Operations</div>
+					<div className="flex items-center gap-3 shrink-0">
+						<VramsNotificationsBell />
+						<div className="text-[11px] text-slate-500 whitespace-nowrap hidden sm:block">Fleet Manager · Operations</div>
+					</div>
 				</div>
 				<Outlet />
 			</main>

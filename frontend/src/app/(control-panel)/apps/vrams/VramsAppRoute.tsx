@@ -9,10 +9,14 @@ import VramsVehicles from './vehicles/VramsVehicles';
 import VehicleProfile from './vehicles/profile/VehicleProfile';
 import VehicleRegister from './vehicles/register/VehicleRegister';
 import VramsDispatch from './dispatch/VramsDispatch';
-import VramsSettings from './settings/VramsSettings';
+import VramsSettingsLayout, { SettingsIndexRedirect } from './settings/VramsSettingsLayout';
+import SettingsProfilePage from './settings/SettingsProfilePage';
+import SettingsNotificationsPage from './settings/SettingsNotificationsPage';
+import VramsDocuments from './documents/VramsDocuments';
 import VramsMap from './map/VramsMap';
 import VramsSearch from './search/VramsSearch';
 import VramsDrivers from './drivers/VramsDrivers';
+import AcceptInvitePage from './drivers/AcceptInvitePage';
 
 function VramsRoleHome() {
 	const { data: user } = useUser();
@@ -36,20 +40,34 @@ const VramsAppRoute: FuseRouteItemType = {
 		{ path: '', element: <VramsRoleHome /> },
 		{ path: 'dashboard', element: <VramsDashboard /> },
 		{ path: 'requests', element: <VramsRequests /> },
+		{ path: 'requests/:requestId/edit', element: <VramsRequests /> },
 		{ path: 'maintenance', element: <VramsMaintenance /> },
+		{ path: 'maintenance/:maintenanceId/edit', element: <VramsMaintenance /> },
 		{
 			path: 'vehicles',
 			children: [
 				{ path: '', element: <VramsVehicles /> },
 				{ path: 'register', element: <VehicleRegister /> },
+				{ path: ':vehicleId/edit', element: <VehicleRegister /> },
 				{ path: ':vehicleId', element: <VehicleProfile /> }
 			]
 		},
 		{ path: 'drivers', element: <VramsDrivers /> },
+		{ path: 'accept-invite', element: <AcceptInvitePage /> },
 		{ path: 'dispatch', element: <VramsDispatch /> },
 		{ path: 'map', element: <VramsMap /> },
 		{ path: 'search', element: <VramsSearch /> },
-		{ path: 'settings', element: <VramsSettings /> }
+		{ path: 'documents', element: <VramsDocuments /> },
+		{
+			path: 'settings',
+			element: <VramsSettingsLayout />,
+			children: [
+				{ path: '', element: <SettingsIndexRedirect /> },
+				{ path: 'profile', element: <SettingsProfilePage /> },
+				{ path: 'notifications', element: <SettingsNotificationsPage /> },
+				{ path: '*', element: <Navigate to="/apps/vrams/settings/profile" replace /> }
+			]
+		}
 	]
 };
 

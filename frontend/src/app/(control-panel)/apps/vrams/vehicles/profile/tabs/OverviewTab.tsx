@@ -1,9 +1,14 @@
 import LinearProgress from '@mui/material/LinearProgress';
 import Avatar from '@mui/material/Avatar';
-import { useNavigate } from 'react-router';
+import { API_BASE_URL } from '@/utils/apiFetch';
 import type { Vehicle } from '../../../types';
 
-type Props = { vehicle: Vehicle; onChangeStatus: () => void };
+type Props = {
+	vehicle: Vehicle;
+	onChangeStatus: () => void;
+	onLogService: () => void;
+	onUploadDocuments: () => void;
+};
 
 function ComplianceCard({ label, date, icon }: { label: string; date?: string; icon: string }) {
 	if (!date) return null;
@@ -36,9 +41,7 @@ function SpecRow({ label, value }: { label: string; value?: string | number }) {
 	);
 }
 
-function OverviewTab({ vehicle, onChangeStatus }: Props) {
-	const navigate = useNavigate();
-
+function OverviewTab({ vehicle, onChangeStatus, onLogService, onUploadDocuments }: Props) {
 	return (
 		<div className="space-y-6">
 
@@ -66,6 +69,44 @@ function OverviewTab({ vehicle, onChangeStatus }: Props) {
 					<SpecRow label="Odometer" value={vehicle.odometer_km ? `${vehicle.odometer_km.toLocaleString()} km` : undefined} />
 					<SpecRow label="Colour" value={vehicle.color} />
 				</div>
+			</div>
+
+			{/* ── Documents ─────────────────────────────────────────────── */}
+			<div className="bg-white rounded-xl border border-gray-200 p-5">
+				<div className="flex items-center justify-between mb-4">
+					<p className="text-xs font-bold text-gray-400 uppercase tracking-wider">📎 Documents</p>
+					<button
+						type="button"
+						onClick={onUploadDocuments}
+						className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+					>
+						Upload / Manage
+					</button>
+				</div>
+				{(vehicle.documents?.length ?? 0) === 0 ? (
+					<p className="text-sm text-gray-400 italic">No documents uploaded for this vehicle yet.</p>
+				) : (
+					<div className="space-y-2">
+						{vehicle.documents?.map((doc) => (
+							<div key={doc.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+								<div className="min-w-0">
+									<p className="text-sm font-semibold text-gray-800 truncate">{doc.file_name || 'Document'}</p>
+									<p className="text-xs text-gray-500">{doc.doc_type.replace('_', ' ')}</p>
+								</div>
+								{doc.file_url ? (
+									<a
+										href={doc.file_url.startsWith('http') ? doc.file_url : `${API_BASE_URL}${doc.file_url}`}
+										target="_blank"
+										rel="noreferrer"
+										className="text-sm font-semibold text-blue-600 hover:underline"
+									>
+										Open
+									</a>
+								) : null}
+							</div>
+						))}
+					</div>
+				)}
 			</div>
 
 			{/* ── Assigned Driver | Usage This Month | Quick Actions ────── */}
@@ -142,13 +183,14 @@ function OverviewTab({ vehicle, onChangeStatus }: Props) {
 						</button>
 						<button
 							type="button"
-							onClick={() => navigate('/apps/vrams/maintenance')}
+							onClick={onLogService}
 							className="w-full flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-left"
 						>
 							<span className="text-base">🔧</span> Log Service
 						</button>
 						<button
 							type="button"
+							onClick={onUploadDocuments}
 							className="w-full flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-left"
 						>
 							<span className="text-base">📎</span> Upload Documents

@@ -7,6 +7,7 @@ import {
 	useGetVramsDispatchTodayQuery
 } from '../VramsApi';
 import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
+import { VramsSearchListSkeleton } from '../components/VramsLoadingSkeletons';
 
 function Highlight({ text, query }: { text: string; query: string }) {
 	if (!query) return <>{text}</>;
@@ -77,11 +78,12 @@ export default function VramsSearch() {
 
 					<VramsCard className="overflow-hidden">
 						<div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-							<p className="text-base font-bold text-slate-900">Requests ({requestItems.length})</p>
-							{loadingRequests && <span className="text-xs text-slate-400">Loading…</span>}
+							<p className="text-base font-bold text-slate-900">Requests ({loadingRequests ? '…' : requestItems.length})</p>
 						</div>
 						<div className="divide-y divide-slate-100">
-							{requestItems.length === 0 ? (
+							{loadingRequests ? (
+								<VramsSearchListSkeleton lines={5} />
+							) : requestItems.length === 0 ? (
 								<p className="px-5 py-3 text-sm text-slate-400">No request matches.</p>
 							) : (
 								requestItems.map((r) => (
@@ -101,11 +103,12 @@ export default function VramsSearch() {
 
 					<VramsCard className="overflow-hidden">
 						<div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-							<p className="text-base font-bold text-slate-900">Vehicles ({vehicleItems.length})</p>
-							{loadingVehicles && <span className="text-xs text-slate-400">Loading…</span>}
+							<p className="text-base font-bold text-slate-900">Vehicles ({loadingVehicles ? '…' : vehicleItems.length})</p>
 						</div>
 						<div className="divide-y divide-slate-100">
-							{vehicleItems.length === 0 ? (
+							{loadingVehicles ? (
+								<VramsSearchListSkeleton lines={5} />
+							) : vehicleItems.length === 0 ? (
 								<p className="px-5 py-3 text-sm text-slate-400">No vehicle matches.</p>
 							) : (
 								vehicleItems.map((v) => (
@@ -125,11 +128,12 @@ export default function VramsSearch() {
 
 					<VramsCard className="overflow-hidden">
 						<div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-							<p className="text-base font-bold text-slate-900">Maintenance ({maintenanceMatches.length})</p>
-							{loadingMaintenance && <span className="text-xs text-slate-400">Loading…</span>}
+							<p className="text-base font-bold text-slate-900">Maintenance ({loadingMaintenance ? '…' : maintenanceMatches.length})</p>
 						</div>
 						<div className="divide-y divide-slate-100">
-							{maintenanceMatches.length === 0 ? (
+							{loadingMaintenance ? (
+								<VramsSearchListSkeleton lines={4} />
+							) : maintenanceMatches.length === 0 ? (
 								<p className="px-5 py-3 text-sm text-slate-400">No maintenance matches.</p>
 							) : (
 								maintenanceMatches.map((m) => (
@@ -151,11 +155,12 @@ export default function VramsSearch() {
 
 					<VramsCard className="overflow-hidden">
 						<div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-							<p className="text-base font-bold text-slate-900">Dispatch ({dispatchMatches.length})</p>
-							{loadingDispatches && <span className="text-xs text-slate-400">Loading…</span>}
+							<p className="text-base font-bold text-slate-900">Dispatch ({loadingDispatches ? '…' : dispatchMatches.length})</p>
 						</div>
 						<div className="divide-y divide-slate-100">
-							{dispatchMatches.length === 0 ? (
+							{loadingDispatches ? (
+								<VramsSearchListSkeleton lines={4} />
+							) : dispatchMatches.length === 0 ? (
 								<p className="px-5 py-3 text-sm text-slate-400">No dispatch matches.</p>
 							) : (
 								dispatchMatches.map((d) => (

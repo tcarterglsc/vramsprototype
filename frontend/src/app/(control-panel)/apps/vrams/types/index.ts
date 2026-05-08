@@ -15,7 +15,7 @@ export type ServiceType =
 	| 'Other';
 export type DispatchStatus = 'en_route' | 'returned' | 'delayed' | 'cancelled';
 export type UserRole = 'admin' | 'fleet_manager' | 'requester' | 'driver';
-export type DocumentType = 'fitness_certificate' | 'insurance' | 'road_licence' | 'other';
+export type DocumentType = 'fitness_certificate' | 'insurance' | 'road_licence' | 'vehicle_photo' | 'other';
 
 export type VramsUser = {
 	id: number;
@@ -30,6 +30,21 @@ export type VramsUser = {
 	driver_id_code?: string;
 	total_trips?: number;
 	created_at: string;
+	version?: number;
+};
+
+export type VramsOrganizationSettings = {
+	id: number;
+	name: string;
+	support_email?: string | null;
+	logo_url?: string | null;
+	updated_at?: string | null;
+};
+
+export type InviteUserResponse = VramsUser & {
+	temporary_password: string;
+	invite_token: string;
+	invite_url: string;
 };
 
 export type VehicleDocument = {
@@ -40,6 +55,11 @@ export type VehicleDocument = {
 	file_name?: string;
 	expires_at?: string;
 	uploaded_at: string;
+};
+
+/** Row from GET /api/vrams/documents (includes vehicle summary). */
+export type FleetDocumentRow = VehicleDocument & {
+	vehicle: { id: number; plate: string; make: string; model: string };
 };
 
 export type Vehicle = {
@@ -146,4 +166,40 @@ export type PaginatedResponse<T> = {
 	page: number;
 	per_page: number;
 	pages: number;
+};
+
+export type VramsReportSummary = {
+	month: string;
+	request_volume: number;
+	requests_completed: number;
+	dispatch_volume: number;
+	maintenance_jobs: number;
+	maintenance_cost_kes: number;
+};
+
+export type OperationalAlerts = {
+	overdue_services: MaintenanceLog[];
+	expiring_documents: VehicleDocument[];
+	blocked_vehicles: Vehicle[];
+};
+
+export type VramsNotificationItem = {
+	id: number;
+	title: string;
+	body: string;
+	category: string;
+	link?: string | null;
+	read_at?: string | null;
+	created_at: string;
+};
+
+export type AuditLogItem = {
+	id: number;
+	action: string;
+	entity_type: string;
+	entity_id?: string;
+	actor_id?: number;
+	actor_role?: string;
+	details?: Record<string, unknown>;
+	created_at: string;
 };

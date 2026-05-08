@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useSnackbar } from 'notistack';
-import { useGetVramsVehicleQuery, useGetVramsDriversQuery, useUpdateVramsVehicleMutation } from '../../VramsApi';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import { API_BASE_URL } from '@/utils/apiFetch';
+import { useGetVramsVehicleQuery, useGetVramsDriversQuery, useUpdateVramsVehicleMutation, useDeleteVramsVehicleMutation } from '../../VramsApi';
 import VehicleIllustration from '../../components/VehicleIllustration';
 import OverviewTab from './tabs/OverviewTab';
 import ServiceHistoryTab from './tabs/ServiceHistoryTab';
 import StatusLogTab from './tabs/StatusLogTab';
 import BookingsTab from './tabs/BookingsTab';
 import ChangeStatusModal from './ChangeStatusModal';
+import LogServiceModal from './LogServiceModal';
+import UploadDocumentModal from './UploadDocumentModal';
 import { VramsCard, VramsPage } from '../../components/VramsUi';
+import { VramsVehicleProfileSkeleton } from '../../components/VramsLoadingSkeletons';
+import { notifyRtk } from '../../utils/vramsNotify';
 
 const TABS = [
 	{ value: 'overview', label: 'Overview' },
@@ -37,10 +47,14 @@ function VehicleProfile() {
 	const { enqueueSnackbar } = useSnackbar();
 	const [tab, setTab] = useState('overview');
 	const [statusModalOpen, setStatusModalOpen] = useState(false);
+	const [serviceModalOpen, setServiceModalOpen] = useState(false);
+	const [documentModalOpen, setDocumentModalOpen] = useState(false);
 	const [assignDriverId, setAssignDriverId] = useState<string>('');
+	const [deleteOpen, setDeleteOpen] = useState(false);
 	const { data: vehicle, isLoading } = useGetVramsVehicleQuery(Number(vehicleId));
 	const { data: drivers = [] } = useGetVramsDriversQuery();
 	const [updateVehicle, { isLoading: isAssigning }] = useUpdateVramsVehicleMutation();
+	const [deleteVehicle, { isLoading: isDeleting }] = useDeleteVramsVehicleMutation();
 
 	useEffect(() => {
 		setAssignDriverId(vehicle?.default_driver?.id ? String(vehicle.default_driver.id) : '');
@@ -54,28 +68,54 @@ function VehicleProfile() {
 				default_driver_id: assignDriverId ? Number(assignDriverId) : null
 			}).unwrap();
 			enqueueSnackbar('Driver assignment updated.', { variant: 'success' });
-		} catch {
-			enqueueSnackbar('Failed to update driver assignment.', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to update driver assignment.');
+		}
+	}
+
+	async function handleDeleteVehicle() {
+		if (!vehicle) return;
+		try {
+			await deleteVehicle(vehicle.id).unwrap();
+			enqueueSnackbar('Vehicle deleted.', { variant: 'success' });
+			setDeleteOpen(false);
+			navigate('/apps/vrams/vehicles');
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to delete vehicle.');
 		}
 	}
 
 	if (isLoading) {
-		return <div className="flex items-center justify-center h-64 text-gray-400 text-base">Loading vehicle…</div>;
+		return (
+			<VramsPage className="space-y-6">
+				<VramsVehicleProfileSkeleton />
+			</VramsPage>
+		);
 	}
 	if (!vehicle) {
 		return <div className="p-8 text-base text-gray-500">Vehicle not found.</div>;
 	}
+	const rawPhotoUrl = vehicle.documents?.find((d) => d.doc_type === 'vehicle_photo')?.file_url;
+	const photoUrl = rawPhotoUrl
+		? rawPhotoUrl.startsWith('http')
+			? rawPhotoUrl
+			: `${API_BASE_URL}${rawPhotoUrl}`
+		: '';
 
 	return (
 		<VramsPage className="space-y-6">
 			{/* Vehicle header bar */}
 			<VramsCard className="px-6 py-5 flex items-center gap-5 flex-wrap">
-				<div className="w-36 flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl px-3 py-2 flex items-center justify-center">
-					<VehicleIllustration
-						vehicleType={vehicle.vehicle_type}
-						color={vehicle.color}
-						style={{ width: '100%', height: 64 }}
-					/>
+				<div className="w-52 flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl px-3 py-2.5 flex items-center justify-center min-h-[120px]">
+					{photoUrl ? (
+						<img src={photoUrl} alt={`${vehicle.plate} vehicle`} className="w-full h-24 object-cover rounded-lg" />
+					) : (
+						<VehicleIllustration
+							vehicleType={vehicle.vehicle_type}
+							color={vehicle.color}
+							style={{ width: '100%', height: 96 }}
+						/>
+					)}
 				</div>
 				<div className="flex-1 min-w-0">
 					<div className="flex items-center gap-3 flex-wrap">
@@ -92,9 +132,18 @@ function VehicleProfile() {
 				<div className="flex items-center gap-3">
 					<button
 						type="button"
+						onClick={() => navigate(`/apps/vrams/vehicles/${vehicle.id}/edit`)}
 						className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-sm font-semibold text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
 					>
 						✏ Edit
+					</button>
+					<button
+						type="button"
+						onClick={() => setDeleteOpen(true)}
+						disabled={isDeleting}
+						className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-sm font-semibold text-red-700 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-60"
+					>
+						🗑 Delete
 					</button>
 					<button
 						type="button"
@@ -167,7 +216,14 @@ function VehicleProfile() {
 				</div>
 
 				<div className="p-6">
-					{tab === 'overview' && <OverviewTab vehicle={vehicle} onChangeStatus={() => setStatusModalOpen(true)} />}
+					{tab === 'overview' && (
+						<OverviewTab
+							vehicle={vehicle}
+							onChangeStatus={() => setStatusModalOpen(true)}
+							onLogService={() => setServiceModalOpen(true)}
+							onUploadDocuments={() => setDocumentModalOpen(true)}
+						/>
+					)}
 					{tab === 'service' && <ServiceHistoryTab vehicleId={vehicle.id} />}
 					{tab === 'log' && <StatusLogTab vehicleId={vehicle.id} />}
 					{tab === 'bookings' && <BookingsTab vehicleId={vehicle.id} />}
@@ -175,8 +231,25 @@ function VehicleProfile() {
 			</VramsCard>
 
 			{statusModalOpen && (
-				<ChangeStatusModal vehicle={vehicle} onClose={() => setStatusModalOpen(false)} />
+				<ChangeStatusModal
+					vehicleId={vehicle.id}
+					currentStatus={vehicle.status}
+					open={statusModalOpen}
+					onClose={() => setStatusModalOpen(false)}
+				/>
 			)}
+			{serviceModalOpen && <LogServiceModal vehicleId={vehicle.id} open={serviceModalOpen} onClose={() => setServiceModalOpen(false)} />}
+			{documentModalOpen && <UploadDocumentModal vehicleId={vehicle.id} open={documentModalOpen} onClose={() => setDocumentModalOpen(false)} />}
+			<Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
+				<DialogTitle>Delete Vehicle</DialogTitle>
+				<DialogContent>
+					<p className="text-sm text-slate-600">Delete <strong>{vehicle.plate}</strong>? This action cannot be undone.</p>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
+					<Button color="error" variant="contained" onClick={handleDeleteVehicle} disabled={isDeleting}>Delete</Button>
+				</DialogActions>
+			</Dialog>
 		</VramsPage>
 	);
 }

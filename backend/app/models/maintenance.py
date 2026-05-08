@@ -18,6 +18,8 @@ class MaintenanceLog(db.Model):
     receipt_url = db.Column(db.String(500))
     logged_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     vehicle = db.relationship("Vehicle", back_populates="maintenance_logs")
     logged_by = db.relationship("User", foreign_keys=[logged_by_id])

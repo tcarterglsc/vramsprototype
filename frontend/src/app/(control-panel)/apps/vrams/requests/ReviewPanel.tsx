@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
 import {
 	useGetVramsRequestQuery,
+	useDeleteVramsRequestMutation,
 	useApproveVramsRequestMutation,
 	useRejectVramsRequestMutation
 } from '../VramsApi';
+import { VramsSidePanelSkeleton } from '../components/VramsLoadingSkeletons';
+import { notifyRtk } from '../utils/vramsNotify';
 
 type Props = { requestId: number; onClose: () => void };
 
@@ -23,6 +31,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
+	const normalized = status.includes('.') ? status.split('.').pop() ?? status : status;
 	const map: Record<string, string> = {
 		pending: 'bg-yellow-100 text-yellow-700',
 		approved: 'bg-green-100 text-green-700',
@@ -30,9 +39,16 @@ function StatusBadge({ status }: { status: string }) {
 		rejected: 'bg-red-100 text-red-600',
 		completed: 'bg-emerald-100 text-emerald-700'
 	};
+	const icon: Record<string, string> = {
+		pending: '⏳',
+		approved: '✅',
+		dispatched: '🚚',
+		rejected: '❌',
+		completed: '✔️'
+	};
 	return (
-		<span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-500'}`}>
-			{status}
+		<span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${map[normalized] ?? 'bg-gray-100 text-gray-500'}`}>
+			{icon[normalized] ? `${icon[normalized]} ` : ''}{normalized.replace('_', ' ')}
 		</span>
 	);
 }
@@ -52,16 +68,14 @@ function ReviewPanel({ requestId, onClose }: Props) {
 	const { data: request, isLoading } = useGetVramsRequestQuery(requestId);
 	const [approve, { isLoading: approving }] = useApproveVramsRequestMutation();
 	const [reject, { isLoading: rejecting }] = useRejectVramsRequestMutation();
+	const [deleteRequest, { isLoading: deleting }] = useDeleteVramsRequestMutation();
 	const [rejectMode, setRejectMode] = useState(false);
 	const [rejectReason, setRejectReason] = useState('');
 	const [done, setDone] = useState<'approved' | 'rejected' | null>(null);
+	const [deleteOpen, setDeleteOpen] = useState(false);
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-				Loading…
-			</div>
-		);
+		return <VramsSidePanelSkeleton />;
 	}
 	if (!request) return null;
 
@@ -70,8 +84,8 @@ function ReviewPanel({ requestId, onClose }: Props) {
 			await approve(request!.id).unwrap();
 			setDone('approved');
 			enqueueSnackbar(`${request!.ref} approved`, { variant: 'success' });
-		} catch {
-			enqueueSnackbar('Failed to approve', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to approve');
 		}
 	}
 
@@ -84,8 +98,20 @@ function ReviewPanel({ requestId, onClose }: Props) {
 			await reject({ id: request!.id, reason: rejectReason }).unwrap();
 			setDone('rejected');
 			enqueueSnackbar(`${request!.ref} rejected`, { variant: 'info' });
-		} catch {
-			enqueueSnackbar('Failed to reject', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to reject');
+		}
+	}
+
+	async function handleDeleteRequest() {
+		if (!request) return;
+		try {
+			await deleteRequest(request.id).unwrap();
+			enqueueSnackbar(`${request.ref} deleted`, { variant: 'success' });
+			setDeleteOpen(false);
+			onClose();
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to delete request');
 		}
 	}
 
@@ -101,6 +127,7 @@ function ReviewPanel({ requestId, onClose }: Props) {
 	];
 
 	return (
+		<>
 		<div className="flex flex-col h-full bg-slate-50">
 			{/* Header */}
 			<div className="flex items-start justify-between px-5 py-4 border-b border-slate-200 bg-white">
@@ -195,6 +222,13 @@ function ReviewPanel({ requestId, onClose }: Props) {
 					{/* Actions */}
 					{request.status === 'pending' && (
 						<div className="border-t border-slate-200 bg-white p-4 space-y-2">
+							<button
+								type="button"
+								onClick={() => navigate(`/apps/vrams/requests?edit=${request.id}`)}
+								className="w-full py-2.5 border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+							>
+								✏ Edit Request
+							</button>
 							{!rejectMode ? (
 								<>
 									<button
@@ -221,6 +255,14 @@ function ReviewPanel({ requestId, onClose }: Props) {
 										className="w-full py-2.5 border border-red-200 text-sm font-semibold text-red-600 rounded-lg hover:bg-red-50 transition-colors"
 									>
 										✕ Reject Request
+									</button>
+									<button
+										type="button"
+										onClick={() => setDeleteOpen(true)}
+										disabled={deleting}
+										className="w-full py-2.5 border border-red-300 text-sm font-semibold text-red-700 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+									>
+										🗑 Delete Request
 									</button>
 								</>
 							) : (
@@ -269,6 +311,17 @@ function ReviewPanel({ requestId, onClose }: Props) {
 				</>
 			)}
 		</div>
+		<Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
+			<DialogTitle>Delete Request</DialogTitle>
+			<DialogContent>
+				<p className="text-sm text-slate-600">Delete <strong>{request.ref}</strong>? This action cannot be undone.</p>
+			</DialogContent>
+			<DialogActions>
+				<Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
+				<Button color="error" variant="contained" onClick={handleDeleteRequest} disabled={deleting}>Delete</Button>
+			</DialogActions>
+		</Dialog>
+		</>
 	);
 }
 

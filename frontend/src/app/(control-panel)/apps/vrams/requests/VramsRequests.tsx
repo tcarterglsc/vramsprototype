@@ -3,10 +3,13 @@ import { useSearchParams } from 'react-router';
 import { useGetVramsRequestsQuery } from '../VramsApi';
 import type { VramsRequest } from '../types';
 import NewRequestPanel from './NewRequestPanel';
+import EditRequestPanel from './EditRequestPanel';
 import ReviewPanel from './ReviewPanel';
 import { VramsCard, VramsHeader } from '../components/VramsUi';
+import { VramsTableBodySkeleton } from '../components/VramsLoadingSkeletons';
 
 function StatusBadge({ status }: { status: string }) {
+	const normalized = status.includes('.') ? status.split('.').pop() ?? status : status;
 	const map: Record<string, string> = {
 		pending: 'bg-yellow-100 text-yellow-700',
 		approved: 'bg-green-100 text-green-700',
@@ -18,9 +21,20 @@ function StatusBadge({ status }: { status: string }) {
 		high: 'bg-orange-100 text-orange-700',
 		normal: 'bg-blue-100 text-blue-700'
 	};
+	const icon: Record<string, string> = {
+		pending: '⏳',
+		approved: '✅',
+		dispatched: '🚚',
+		rejected: '❌',
+		completed: '✔️',
+		cancelled: '⛔',
+		urgent: '🔥',
+		high: '⚠️',
+		normal: '•'
+	};
 	return (
-		<span className={`px-3 py-1 rounded-full text-sm font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-500'}`}>
-			{status}
+		<span className={`px-3 py-1 rounded-full text-sm font-semibold capitalize ${map[normalized] ?? 'bg-gray-100 text-gray-500'}`}>
+			{icon[normalized] ? `${icon[normalized]} ` : ''}{normalized.replace('_', ' ')}
 		</span>
 	);
 }
@@ -28,11 +42,13 @@ function StatusBadge({ status }: { status: string }) {
 function VramsRequests() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const openId = searchParams.get('open');
+	const editId = searchParams.get('edit');
 	const newMode = searchParams.get('new') === '1';
 
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [selectedId, setSelectedId] = useState<number | null>(null);
 	const [showNew, setShowNew] = useState(false);
+	const [showEdit, setShowEdit] = useState(false);
 	const [search, setSearch] = useState('');
 	const [statusFilter, setStatusFilter] = useState('');
 	const [priorityFilter, setPriorityFilter] = useState('');
@@ -44,17 +60,25 @@ function VramsRequests() {
 		if (openId) {
 			setSelectedId(Number(openId));
 			setShowNew(false);
+			setShowEdit(false);
+			setPanelOpen(true);
+		} else if (editId) {
+			setSelectedId(Number(editId));
+			setShowNew(false);
+			setShowEdit(true);
 			setPanelOpen(true);
 		} else if (newMode) {
 			setSelectedId(null);
 			setShowNew(true);
+			setShowEdit(false);
 			setPanelOpen(true);
 		}
-	}, [openId, newMode]);
+	}, [openId, editId, newMode]);
 
 	function openReview(id: number) {
 		setSelectedId(id);
 		setShowNew(false);
+		setShowEdit(false);
 		setPanelOpen(true);
 		setSearchParams({ open: String(id) });
 	}
@@ -62,6 +86,7 @@ function VramsRequests() {
 	function openNew() {
 		setSelectedId(null);
 		setShowNew(true);
+		setShowEdit(false);
 		setPanelOpen(true);
 		setSearchParams({ new: '1' });
 	}
@@ -206,9 +231,7 @@ function VramsRequests() {
 							</thead>
 							<tbody className="divide-y divide-gray-100">
 								{isLoading ? (
-									<tr>
-										<td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-base">Loading…</td>
-									</tr>
+									<VramsTableBodySkeleton rows={10} cols={6} />
 								) : filtered.length === 0 ? (
 									<tr>
 										<td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-base">No requests found</td>
@@ -277,6 +300,8 @@ function VramsRequests() {
 				<div className="fixed top-16 right-0 bottom-0 w-full max-w-[460px] bg-white border-l border-gray-200 overflow-y-auto z-40 shadow-xl">
 					{showNew ? (
 						<NewRequestPanel onClose={closePanel} />
+					) : showEdit && selectedId ? (
+						<EditRequestPanel requestId={selectedId} onClose={closePanel} />
 					) : selectedId ? (
 						<ReviewPanel requestId={selectedId} onClose={closePanel} />
 					) : null}
