@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSnackbar } from 'notistack';
 import { useCreateVramsRequestMutation } from '../VramsApi';
+import { notifyRtk } from '../utils/vramsNotify';
 
 const schema = z.object({
 	requester_name: z.string().min(2, 'Required'),
@@ -65,9 +66,13 @@ function NewRequestPanel({ onClose }: Props) {
 			await createRequest(values).unwrap();
 			enqueueSnackbar('Request submitted successfully', { variant: 'success' });
 			onClose();
-		} catch {
-			enqueueSnackbar('Failed to submit request', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to submit request');
 		}
+	}
+
+	function onInvalid() {
+		enqueueSnackbar('Please fix the highlighted fields.', { variant: 'warning' });
 	}
 
 	return (
@@ -88,7 +93,7 @@ function NewRequestPanel({ onClose }: Props) {
 			</div>
 
 			{/* Form body */}
-			<form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+			<form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 				{/* Requester */}
 				<Field
 					label="Requester"
@@ -319,7 +324,7 @@ function NewRequestPanel({ onClose }: Props) {
 				</button>
 				<button
 					type="button"
-					onClick={handleSubmit(onSubmit)}
+					onClick={handleSubmit(onSubmit, onInvalid)}
 					disabled={isLoading}
 					className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
 				>

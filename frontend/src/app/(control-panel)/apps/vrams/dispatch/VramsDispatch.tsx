@@ -7,12 +7,15 @@ import {
 	useGetVramsDispatchPendingQuery,
 	useGetVramsDispatchTodayQuery,
 	useAssignVramsDispatchMutation,
+	useUpdateVramsDispatchMutation,
 	useUpdateVramsDispatchStatusMutation,
 	useGetVramsVehiclesQuery,
 	useGetVramsDriversQuery
 } from '../VramsApi';
 import type { VramsRequest, Dispatch } from '../types';
 import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
+import { VramsTableBodySkeleton } from '../components/VramsLoadingSkeletons';
+import { notifyRtk } from '../utils/vramsNotify';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, string> = {
@@ -50,8 +53,8 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 			}).unwrap();
 			setDispatched(true);
 			enqueueSnackbar(`${request.ref} dispatched!`, { variant: 'success' });
-		} catch {
-			enqueueSnackbar('Dispatch failed', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Dispatch failed');
 		}
 	}
 
@@ -137,16 +140,36 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 	const { enqueueSnackbar } = useSnackbar();
 	const [updateStatus] = useUpdateVramsDispatchStatusMutation();
+	const [updateDispatch, { isLoading: isUpdatingDispatch }] = useUpdateVramsDispatchMutation();
+	const { data: vehiclesPage } = useGetVramsVehiclesQuery({ page: 1 });
+	const { data: drivers = [] } = useGetVramsDriversQuery();
 	const [menuOpen, setMenuOpen] = useState(false);
+	const [editingAssignment, setEditingAssignment] = useState(false);
+	const [vehicleId, setVehicleId] = useState('');
+	const [driverId, setDriverId] = useState('');
 
 	async function handle(status: string) {
 		try {
 			await updateStatus({ id: d.id, status }).unwrap();
 			enqueueSnackbar(`Status updated to ${status}`, { variant: 'success' });
-		} catch {
-			enqueueSnackbar('Update failed', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Update failed');
 		}
 		setMenuOpen(false);
+	}
+
+	async function handleSaveDispatchEdit() {
+		if (!vehicleId || !driverId) {
+			enqueueSnackbar('Select both vehicle and driver.', { variant: 'warning' });
+			return;
+		}
+		try {
+			await updateDispatch({ id: d.id, vehicle_id: Number(vehicleId), driver_id: Number(driverId) }).unwrap();
+			enqueueSnackbar('Dispatch assignment updated', { variant: 'success' });
+			setEditingAssignment(false);
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to update assignment');
+		}
 	}
 
 	return (
@@ -156,23 +179,59 @@ function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 				<p className="text-sm text-gray-400 mt-0.5">📍 HQ → {d.request?.destination}</p>
 			</td>
 			<td className="px-6 py-5">
-				<span className="bg-gray-100 rounded-lg px-3 py-1.5 font-mono text-sm font-bold text-gray-800">
-					🚗 {d.vehicle?.plate}
-				</span>
-				<p className="text-sm text-gray-500 mt-1.5">
-					{d.vehicle?.make} {d.vehicle?.model}
-				</p>
+				{editingAssignment ? (
+					<TextField
+						select
+						value={vehicleId}
+						onChange={(e) => setVehicleId(e.target.value)}
+						sx={{ minWidth: 210 }}
+						label="Select Vehicle"
+					>
+						<MenuItem value="">— Select —</MenuItem>
+						{(vehiclesPage?.items ?? []).map((v) => (
+							<MenuItem key={v.id} value={v.id}>
+								{v.plate} — {v.make} {v.model}
+							</MenuItem>
+						))}
+					</TextField>
+				) : (
+					<>
+						<span className="bg-gray-100 rounded-lg px-3 py-1.5 font-mono text-sm font-bold text-gray-800">
+							🚗 {d.vehicle?.plate}
+						</span>
+						<p className="text-sm text-gray-500 mt-1.5">
+							{d.vehicle?.make} {d.vehicle?.model}
+						</p>
+					</>
+				)}
 			</td>
 			<td className="px-6 py-5">
-				<div className="flex items-center gap-3">
-					<Avatar sx={{ width: 36, height: 36, bgcolor: '#1e40af', fontSize: 13, fontWeight: 700 }}>
-						{d.driver?.name?.slice(0, 2)}
-					</Avatar>
-					<div>
-						<p className="text-base font-semibold text-gray-800">{d.driver?.name}</p>
-						<p className="text-sm text-gray-400">{d.driver?.driver_id_code}</p>
+				{editingAssignment ? (
+					<TextField
+						select
+						value={driverId}
+						onChange={(e) => setDriverId(e.target.value)}
+						sx={{ minWidth: 210 }}
+						label="Select Driver"
+					>
+						<MenuItem value="">— Select —</MenuItem>
+						{drivers.map((drv) => (
+							<MenuItem key={drv.id} value={drv.id}>
+								{drv.name} — {drv.driver_id_code}
+							</MenuItem>
+						))}
+					</TextField>
+				) : (
+					<div className="flex items-center gap-3">
+						<Avatar sx={{ width: 36, height: 36, bgcolor: '#1e40af', fontSize: 13, fontWeight: 700 }}>
+							{d.driver?.name?.slice(0, 2)}
+						</Avatar>
+						<div>
+							<p className="text-base font-semibold text-gray-800">{d.driver?.name}</p>
+							<p className="text-sm text-gray-400">{d.driver?.driver_id_code}</p>
+						</div>
 					</div>
-				</div>
+				)}
 			</td>
 			<td className="px-6 py-5">
 				<p className="text-base font-semibold text-gray-800">
@@ -190,30 +249,64 @@ function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 				<StatusBadge status={d.status} />
 			</td>
 			<td className="px-6 py-5 relative">
-				<button
-					type="button"
-					onClick={() => setMenuOpen(!menuOpen)}
-					className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-xl transition-colors"
-				>
-					⋮
-				</button>
-				{menuOpen && (
-					<div className="absolute right-5 top-10 bg-white border border-gray-200 rounded-xl shadow-xl z-10 min-w-[180px] overflow-hidden">
+				{editingAssignment ? (
+					<div className="flex items-center gap-2">
 						<button
 							type="button"
-							className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-							onClick={() => handle('returned')}
+							onClick={handleSaveDispatchEdit}
+							disabled={isUpdatingDispatch}
+							className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
 						>
-							✅ Mark Returned
+							{isUpdatingDispatch ? 'Saving...' : 'Save'}
 						</button>
 						<button
 							type="button"
-							className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-							onClick={() => handle('delayed')}
+							onClick={() => setEditingAssignment(false)}
+							className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50"
 						>
-							⚠️ Report Delay
+							Cancel
 						</button>
 					</div>
+				) : (
+					<>
+						<button
+							type="button"
+							onClick={() => setMenuOpen(!menuOpen)}
+							className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-xl transition-colors"
+						>
+							⋮
+						</button>
+						{menuOpen && (
+							<div className="absolute right-5 top-10 bg-white border border-gray-200 rounded-xl shadow-xl z-10 min-w-[180px] overflow-hidden">
+								<button
+									type="button"
+									className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+									onClick={() => {
+										setVehicleId(d.vehicle_id ? String(d.vehicle_id) : '');
+										setDriverId(d.driver_id ? String(d.driver_id) : '');
+										setEditingAssignment(true);
+										setMenuOpen(false);
+									}}
+								>
+									✏️ Edit Assignment
+								</button>
+								<button
+									type="button"
+									className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+									onClick={() => handle('returned')}
+								>
+									✅ Mark Returned
+								</button>
+								<button
+									type="button"
+									className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+									onClick={() => handle('delayed')}
+								>
+									⚠️ Report Delay
+								</button>
+							</div>
+						)}
+					</>
 				)}
 			</td>
 		</tr>
@@ -254,7 +347,20 @@ function VramsDispatch() {
 				</div>
 
 				{pendingLoading ? (
-					<p className="px-6 py-10 text-center text-gray-400 text-base">Loading…</p>
+					<div className="overflow-x-auto">
+						<table className="w-full">
+							<thead>
+								<tr className="bg-gray-50 border-b border-gray-100">
+									{['REF / REQUESTER / ROUTE', 'DEPARTURE DATE & TIME', 'ASSIGN VEHICLE', 'ASSIGN DRIVER', 'ACTION'].map((h) => (
+										<th key={h} className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+									))}
+								</tr>
+							</thead>
+							<tbody>
+								<VramsTableBodySkeleton rows={5} cols={5} />
+							</tbody>
+						</table>
+					</div>
 				) : !pending?.length ? (
 					<p className="px-6 py-10 text-center text-gray-400 text-base">No requests awaiting dispatch.</p>
 				) : (
@@ -322,7 +428,20 @@ function VramsDispatch() {
 				</div>
 
 				{todayLoading ? (
-					<p className="px-6 py-10 text-center text-gray-400 text-base">Loading…</p>
+					<div className="overflow-x-auto">
+						<table className="w-full">
+							<thead>
+								<tr className="bg-gray-50 border-b border-gray-100">
+									{['REF / ROUTE', 'VEHICLE PLATE', 'DRIVER NAME', 'DEPARTED TIME', 'STATUS', 'ACTIONS'].map((h) => (
+										<th key={h} className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+									))}
+								</tr>
+							</thead>
+							<tbody>
+								<VramsTableBodySkeleton rows={6} cols={6} />
+							</tbody>
+						</table>
+					</div>
 				) : !today?.length ? (
 					<p className="px-6 py-10 text-center text-gray-400 text-base">No dispatches today.</p>
 				) : (

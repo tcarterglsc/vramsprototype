@@ -14,4 +14,10 @@ export type User = FuseAuthUser & {
 	shortcuts?: string[];
 	settings?: PartialDeep<FuseSettingsConfigType>;
 	loginRedirectUrl?: string; // The URL to redirect to after login.
+	department?: string | null;
+	phone?: string | null;
+	license_number?: string | null;
+	driver_id_code?: string | null;
+	version?: number;
+	avatar_initials?: string;
 };

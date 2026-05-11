@@ -1,9 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useSnackbar } from 'notistack';
-import { useGetVramsDriversQuery, useGetVramsDispatchTodayQuery, useGetVramsVehiclesQuery, useUpdateVramsVehicleMutation } from '../VramsApi';
-import type { Dispatch, Vehicle, VramsUser } from '../types';
+import {
+	useGetVramsDriversQuery,
+	useGetVramsDispatchTodayQuery,
+	useGetVramsVehiclesQuery,
+	useUpdateVramsVehicleMutation,
+	useInviteVramsUserMutation
+} from '../VramsApi';
+import type { Dispatch, Vehicle, VramsUser, InviteUserResponse } from '../types';
 import { VramsCard, VramsPage } from '../components/VramsUi';
+import { notifyRtk } from '../utils/vramsNotify';
 
 function statusTone(active: boolean): string {
 	return active
@@ -17,10 +24,14 @@ export default function VramsDrivers() {
 	const [query, setQuery] = useState('');
 	const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 	const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+	const [inviteName, setInviteName] = useState('');
+	const [inviteEmail, setInviteEmail] = useState('');
+	const [latestInvite, setLatestInvite] = useState<InviteUserResponse | null>(null);
 	const { data: drivers = [] } = useGetVramsDriversQuery();
 	const { data: dispatches = [] } = useGetVramsDispatchTodayQuery();
 	const { data: vehiclesPage } = useGetVramsVehiclesQuery({ page: 1 });
 	const [updateVehicle, { isLoading: isAssigning }] = useUpdateVramsVehicleMutation();
+	const [inviteUser, { isLoading: isInviting }] = useInviteVramsUserMutation();
 	const vehicles = vehiclesPage?.items ?? [];
 
 	const activeDispatchByDriver = useMemo(() => {
@@ -64,8 +75,24 @@ export default function VramsDrivers() {
 		try {
 			await updateVehicle({ id: vehicleId, default_driver_id: driverId }).unwrap();
 			enqueueSnackbar('Driver assigned to vehicle successfully.', { variant: 'success' });
-		} catch {
-			enqueueSnackbar('Failed to assign driver to vehicle.', { variant: 'error' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Failed to assign driver to vehicle.');
+		}
+	}
+
+	async function handleInviteDriver() {
+		if (!inviteName.trim() || !inviteEmail.trim()) {
+			enqueueSnackbar('Provide both name and email to invite a driver.', { variant: 'warning' });
+			return;
+		}
+		try {
+			const payload = await inviteUser({ name: inviteName.trim(), email: inviteEmail.trim(), role: 'driver' }).unwrap();
+			setLatestInvite(payload);
+			setInviteName('');
+			setInviteEmail('');
+			enqueueSnackbar('Driver invited successfully.', { variant: 'success' });
+		} catch (err) {
+			notifyRtk(enqueueSnackbar, err, 'Driver invite failed.');
 		}
 	}
 
@@ -89,10 +116,48 @@ export default function VramsDrivers() {
 			</div>
 
 			<VramsCard className="p-5">
+				<div className="mb-6">
+					<p className="text-lg font-bold text-slate-900">Invite Driver</p>
+					<p className="text-sm text-slate-600">Create a secure invite token and share onboarding link.</p>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+						<input
+							type="text"
+							value={inviteName}
+							onChange={(e) => setInviteName(e.target.value)}
+							placeholder="Driver name"
+							className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+						/>
+						<input
+							type="email"
+							value={inviteEmail}
+							onChange={(e) => setInviteEmail(e.target.value)}
+							placeholder="Driver email"
+							className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+						/>
+						<button
+							type="button"
+							onClick={handleInviteDriver}
+							disabled={isInviting}
+							className="h-10 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+						>
+							{isInviting ? 'Inviting...' : 'Invite Driver'}
+						</button>
+					</div>
+					{latestInvite ? (
+						<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 break-all">
+							<p className="font-semibold">Invite URL:</p>
+							<p>{latestInvite.invite_url}</p>
+							<p className="mt-2 font-semibold">Temporary password:</p>
+							<p>{latestInvite.temporary_password}</p>
+						</div>
+					) : null}
+				</div>
 				<div className="flex items-center justify-between gap-3 flex-wrap">
 					<div>
-						<p className="text-lg font-bold text-slate-900">Assign Driver to Vehicle</p>
-						<p className="text-sm text-slate-600">Set a default driver for any fleet vehicle.</p>
+						<p className="text-lg font-bold text-slate-900">{selectedDriverId ? 'Edit Driver Assignment' : 'Assign Driver to Vehicle'}</p>
+						<p className="text-sm text-slate-600">
+							{selectedDriverId ? 'Update assignment using the same assignment form.' : 'Set a default driver for any fleet vehicle.'}
+						</p>
 					</div>
 					<button
 						type="button"
@@ -191,6 +256,16 @@ export default function VramsDrivers() {
 											className="px-3 py-1.5 rounded-lg border border-indigo-200 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
 										>
 											Assign
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												setSelectedDriverId(String(driver.id));
+												if (assignedVehicle?.id) setSelectedVehicleId(String(assignedVehicle.id));
+											}}
+											className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+										>
+											Edit
 										</button>
 										<button
 											type="button"

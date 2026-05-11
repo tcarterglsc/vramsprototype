@@ -35,6 +35,8 @@ class Vehicle(db.Model):
     default_driver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     default_driver = db.relationship("User", foreign_keys=[default_driver_id])
     documents = db.relationship("VehicleDocument", back_populates="vehicle", cascade="all, delete-orphan")
@@ -55,6 +57,8 @@ class VehicleDocument(db.Model):
     expires_at = db.Column(db.Date)
     uploaded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     uploaded_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     vehicle = db.relationship("Vehicle", back_populates="documents")
     uploaded_by = db.relationship("User", foreign_keys=[uploaded_by_id])

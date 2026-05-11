@@ -56,13 +56,23 @@ export async function authGetDbUserByEmail(email: string): Promise<Response> {
 }
 
 /**
- * Update user
+ * Update current user profile / password (Flask JWT).
  */
 export function authUpdateDbUser(user: PartialDeep<User>) {
-	return apiFetch(`/api/mock/auth/user/${user.id}`, {
-		method: 'PUT',
-		body: JSON.stringify(UserModel(user))
-	});
+	const body: Record<string, unknown> = {};
+	const u = user as Partial<User> & { current_password?: string; new_password?: string };
+	if (u.displayName !== undefined) body.name = u.displayName;
+	if (u.department !== undefined) body.department = u.department;
+	if (u.phone !== undefined) body.phone = u.phone;
+	if (u.license_number !== undefined) body.license_number = u.license_number;
+	if (u.driver_id_code !== undefined) body.driver_id_code = u.driver_id_code;
+	if (u.current_password !== undefined) body.current_password = u.current_password;
+	if (u.new_password !== undefined) body.new_password = u.new_password;
+	if (u.version !== undefined) body.expected_version = u.version;
+	if (Object.keys(body).length === 0) {
+		return Promise.reject(new Error('No fields to update'));
+	}
+	return apiFetch('/api/auth/me', { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 /**

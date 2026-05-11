@@ -25,7 +25,7 @@ class Request(db.Model):
     return_at = db.Column(db.DateTime)
     priority = db.Column(db.String(20), nullable=False, default="normal")
     passenger_count = db.Column(db.Integer, default=1)
-    status = db.Column(db.Enum(RequestStatus), nullable=False, default=RequestStatus.pending)
+    status = db.Column(db.Enum(RequestStatus), nullable=False, default="pending")
     rejection_reason = db.Column(db.Text)
     vehicle_id = db.Column(db.Integer, db.ForeignKey("vehicles.id"), nullable=True)
     approved_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
@@ -34,6 +34,8 @@ class Request(db.Model):
     rejected_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     requester = db.relationship("User", foreign_keys=[requester_id], back_populates="requests")
     vehicle = db.relationship("Vehicle", back_populates="requests")
