@@ -1,6 +1,8 @@
 from marshmallow import Schema, fields
 from .user_schema import UserSchema
 
+_enum_val = lambda obj, attr: (v := getattr(obj, attr, None)) and (v.value if hasattr(v, "value") else v)
+
 
 class VehicleDocumentSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -10,6 +12,7 @@ class VehicleDocumentSchema(Schema):
     file_name = fields.Str()
     expires_at = fields.Date()
     uploaded_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
 
 
 class VehicleSchema(Schema):
@@ -26,7 +29,7 @@ class VehicleSchema(Schema):
     engine_size = fields.Str()
     color = fields.Str()
     odometer_km = fields.Int()
-    status = fields.Str()
+    status = fields.Function(lambda obj: _enum_val(obj, "status"))
     bookable = fields.Bool()
     notes = fields.Str()
     fitness_expiry = fields.Date()
@@ -36,3 +39,4 @@ class VehicleSchema(Schema):
     documents = fields.List(fields.Nested(VehicleDocumentSchema), dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)

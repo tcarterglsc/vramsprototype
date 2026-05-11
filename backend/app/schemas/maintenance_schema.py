@@ -17,3 +17,4 @@ class MaintenanceLogSchema(Schema):
     notes = fields.Str()
     logged_by = fields.Nested(UserSchema, dump_only=True)
     created_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)

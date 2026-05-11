@@ -1,16 +1,11 @@
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-import random
-from datetime import datetime, timezone, date as date_type
-from flask import Blueprint, request, jsonify
-=======
 import os
+import random
 import secrets
 import json
 from uuid import uuid4
 from datetime import datetime, timezone, date as date_type, timedelta
 from functools import wraps
 from flask import Blueprint, request, jsonify, current_app, send_from_directory
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy import or_
@@ -270,25 +265,17 @@ def mark_all_notifications_read():
 @vrams_bp.get("/requests")
 @jwt_required()
 def get_requests():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    query = Request.query
-    if status := request.args.get("status"):
-        query = query.filter_by(status=status)
-    if priority := request.args.get("priority"):
-        query = query.filter_by(priority=priority)
-=======
     q = _active_query(Request)
     if s := request.args.get("status"):
         q = q.filter_by(status=s)
     if p := request.args.get("priority"):
         q = q.filter_by(priority=p)
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     if search := request.args.get("q"):
-        query = query.filter(or_(Request.ref.ilike(f"%{search}%"), Request.destination.ilike(f"%{search}%")))
-    query = query.order_by(Request.created_at.desc())
+        q = q.filter(or_(Request.ref.ilike(f"%{search}%"), Request.destination.ilike(f"%{search}%")))
+    q = q.order_by(Request.created_at.desc())
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 20))
-    result = paginate(query, page, per_page)
+    result = paginate(q, page, per_page)
     result["items"] = requests_schema.dump(result["items"])
     return jsonify(result)
 
@@ -296,25 +283,14 @@ def get_requests():
 @vrams_bp.get("/requests/<int:req_id>")
 @jwt_required()
 def get_request(req_id):
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    req = Request.query.get_or_404(req_id)
-    return jsonify(request_schema.dump(req))
-=======
     r = _active_or_404(Request, req_id)
     return jsonify(request_schema.dump(r))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.post("/requests")
 @jwt_required()
 @require_roles("requester", "fleet_manager", "admin")
 def create_request():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    data = request.get_json()
-    requester = User.query.filter_by(role=UserRole.requester, is_active=True).first()
-    if not requester:
-        requester = User.query.first()
-=======
     data, error = _ensure_json()
     if error:
         return error
@@ -322,13 +298,12 @@ def create_request():
     if missing_error:
         return missing_error
     requester = _current_user()
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
     ref = f"REQ-{random.randint(8000, 9999)}"
     while _active_query(Request).filter_by(ref=ref).first():
         ref = f"REQ-{random.randint(8000, 9999)}"
 
-    req = Request(
+    r = Request(
         ref=ref,
         requester_id=requester.id,
         destination=data["destination"],
@@ -339,11 +314,6 @@ def create_request():
         priority=data.get("priority", "normal"),
         passenger_count=data.get("passenger_count", 1)
     )
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    db.session.add(req)
-    db.session.commit()
-    return jsonify(request_schema.dump(req)), 201
-=======
     db.session.add(r)
     db.session.flush()
     _notify_fleet_managers(
@@ -355,22 +325,12 @@ def create_request():
     db.session.commit()
     _log_audit("request_created", "request", r.id, {"priority": r.priority, "booking_type": r.booking_type})
     return jsonify(request_schema.dump(r)), 201
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.patch("/requests/<int:req_id>/approve")
 @jwt_required()
 @require_roles("fleet_manager", "admin")
 def approve_request(req_id):
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    req = Request.query.get_or_404(req_id)
-    fleet_manager = User.query.filter_by(role=UserRole.fleet_manager).first() or User.query.first()
-    req.status = RequestStatus.approved
-    req.approved_by_id = fleet_manager.id
-    req.approved_at = datetime.now(timezone.utc)
-    db.session.commit()
-    return jsonify(request_schema.dump(req))
-=======
     r = _active_or_404(Request, req_id)
     if r.status != RequestStatus.pending:
         return jsonify({"message": "Only pending requests can be approved"}), 409
@@ -388,7 +348,6 @@ def approve_request(req_id):
     db.session.commit()
     _log_audit("request_approved", "request", r.id)
     return jsonify(request_schema.dump(r))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.patch("/requests/<int:req_id>")
@@ -440,17 +399,6 @@ def delete_request(req_id):
 @jwt_required()
 @require_roles("fleet_manager", "admin")
 def reject_request(req_id):
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    req = Request.query.get_or_404(req_id)
-    data = request.get_json()
-    fleet_manager = User.query.filter_by(role=UserRole.fleet_manager).first() or User.query.first()
-    req.status = RequestStatus.rejected
-    req.rejection_reason = data.get("reason", "")
-    req.rejected_by_id = fleet_manager.id
-    req.rejected_at = datetime.now(timezone.utc)
-    db.session.commit()
-    return jsonify(request_schema.dump(req))
-=======
     r = _active_or_404(Request, req_id)
     if r.status != RequestStatus.pending:
         return jsonify({"message": "Only pending requests can be rejected"}), 409
@@ -474,7 +422,6 @@ def reject_request(req_id):
     db.session.commit()
     _log_audit("request_rejected", "request", r.id, {"reason": r.rejection_reason})
     return jsonify(request_schema.dump(r))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 # ── Vehicles ─────────────────────────────────────────────────────────────────
@@ -482,53 +429,34 @@ def reject_request(req_id):
 @vrams_bp.get("/vehicles")
 @jwt_required()
 def get_vehicles():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    query = Vehicle.query
-    if status := request.args.get("status"):
-        query = query.filter_by(status=status)
-    if vehicle_type := request.args.get("vehicle_type"):
-        query = query.filter_by(vehicle_type=vehicle_type)
-=======
     q = _active_query(Vehicle)
     if s := request.args.get("status"):
         q = q.filter_by(status=s)
     if vt := request.args.get("vehicle_type"):
         q = q.filter_by(vehicle_type=vt)
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     if request.args.get("bookable") in ("true", "1"):
-        query = query.filter_by(bookable=True)
+        q = q.filter_by(bookable=True)
     if search := request.args.get("q"):
-        query = query.filter(or_(Vehicle.plate.ilike(f"%{search}%"), Vehicle.model.ilike(f"%{search}%"), Vehicle.make.ilike(f"%{search}%")))
-    query = query.order_by(Vehicle.plate)
+        q = q.filter(or_(Vehicle.plate.ilike(f"%{search}%"), Vehicle.model.ilike(f"%{search}%"), Vehicle.make.ilike(f"%{search}%")))
+    q = q.order_by(Vehicle.plate)
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 20))
-    result = paginate(query, page, per_page)
+    result = paginate(q, page, per_page)
     result["items"] = vehicles_schema.dump(result["items"])
     return jsonify(result)
 
 
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-@vrams_bp.get("/vehicles/<int:vehicle_id>")
-def get_vehicle(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    return jsonify(vehicle_schema.dump(vehicle))
-=======
 @vrams_bp.get("/vehicles/<int:v_id>")
 @jwt_required()
 def get_vehicle(v_id):
     v = _active_or_404(Vehicle, v_id)
     return jsonify(vehicle_schema.dump(v))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.post("/vehicles")
 @jwt_required()
 @require_roles("fleet_manager", "admin")
 def create_vehicle():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    data = request.get_json()
-    vehicle = Vehicle(
-=======
     data, error = _ensure_json()
     if error:
         return error
@@ -536,7 +464,6 @@ def create_vehicle():
     if missing_error:
         return missing_error
     v = Vehicle(
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
         plate=data["plate"].upper(),
         vin=data.get("vin") or None,
         make=data["make"],
@@ -557,17 +484,8 @@ def create_vehicle():
         next_service_date=date_type.fromisoformat(data["next_service_date"]) if data.get("next_service_date") else None,
         default_driver_id=data.get("default_driver_id") or None,
     )
-    db.session.add(vehicle)
+    db.session.add(v)
     db.session.commit()
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    return jsonify(vehicle_schema.dump(vehicle)), 201
-
-
-@vrams_bp.patch("/vehicles/<int:vehicle_id>")
-def update_vehicle(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    data = request.get_json()
-=======
     _log_audit("vehicle_created", "vehicle", v.id, {"plate": v.plate})
     return jsonify(vehicle_schema.dump(v)), 201
 
@@ -580,28 +498,12 @@ def update_vehicle(v_id):
     data, error = _ensure_json()
     if error:
         return error
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     for field in ["make", "model", "year", "vehicle_type", "fuel_type", "transmission",
                   "seating_capacity", "engine_size", "color", "odometer_km", "bookable", "notes"]:
         if field in data:
-            setattr(vehicle, field, data[field])
+            setattr(v, field, data[field])
     for date_field in ["fitness_expiry", "insurance_expiry", "next_service_date"]:
         if date_field in data and data[date_field]:
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-            setattr(vehicle, date_field, date_type.fromisoformat(data[date_field]))
-    db.session.commit()
-    return jsonify(vehicle_schema.dump(vehicle))
-
-
-@vrams_bp.patch("/vehicles/<int:vehicle_id>/status")
-def update_vehicle_status(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    data = request.get_json()
-    old_status = vehicle.status
-    vehicle.status = data["status"]
-    status_log = VehicleStatusLog(
-        vehicle_id=vehicle.id,
-=======
             setattr(v, date_field, date_type.fromisoformat(data[date_field]))
     version_error = _enforce_expected_version(v, data)
     if version_error:
@@ -642,33 +544,10 @@ def update_vehicle_status(v_id):
     log = VehicleStatusLog(
         vehicle_id=v.id,
         changed_by_id=_current_user().id,
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
         from_status=old_status,
         to_status=data["status"],
         reason=data.get("reason")
     )
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    db.session.add(status_log)
-    db.session.commit()
-    return jsonify(vehicle_schema.dump(vehicle))
-
-
-@vrams_bp.get("/vehicles/<int:vehicle_id>/status-logs")
-def get_vehicle_status_logs(vehicle_id):
-    logs = VehicleStatusLog.query.filter_by(vehicle_id=vehicle_id).order_by(VehicleStatusLog.changed_at.desc()).all()
-    return jsonify(status_log_schema.dump(logs))
-
-
-@vrams_bp.get("/vehicles/<int:vehicle_id>/bookings")
-def get_vehicle_bookings(vehicle_id):
-    bookings = Request.query.filter_by(vehicle_id=vehicle_id).order_by(Request.departure_at.desc()).all()
-    return jsonify(requests_schema.dump(bookings))
-
-
-@vrams_bp.get("/vehicles/<int:vehicle_id>/maintenance")
-def get_vehicle_maintenance(vehicle_id):
-    logs = MaintenanceLog.query.filter_by(vehicle_id=vehicle_id).order_by(MaintenanceLog.date_performed.desc()).all()
-=======
     db.session.add(log)
     _bump_version(v)
     db.session.commit()
@@ -694,14 +573,12 @@ def get_vehicle_bookings(v_id):
 @jwt_required()
 def get_vehicle_maintenance(v_id):
     logs = _active_query(MaintenanceLog).filter_by(vehicle_id=v_id).order_by(MaintenanceLog.date_performed.desc()).all()
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     return jsonify(maintenances_schema.dump(logs))
 
 
 @vrams_bp.get("/documents")
 @jwt_required()
 def list_fleet_documents():
-    """All vehicle documents fleet-wide, optional search (q) on type, file name, plate, make, model."""
     q = (
         _active_query(VehicleDocument)
         .join(Vehicle, VehicleDocument.vehicle_id == Vehicle.id)
@@ -789,18 +666,6 @@ def download_vehicle_document(v_id, file_name):
 @vrams_bp.get("/maintenance")
 @jwt_required()
 def get_maintenance():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    query = MaintenanceLog.query
-    if vehicle_id := request.args.get("vehicle_id"):
-        query = query.filter_by(vehicle_id=int(vehicle_id))
-    if service_type := request.args.get("service_type"):
-        query = query.filter_by(service_type=service_type)
-    if date_from := request.args.get("date_from"):
-        query = query.filter(MaintenanceLog.date_performed >= date_type.fromisoformat(date_from))
-    if date_to := request.args.get("date_to"):
-        query = query.filter(MaintenanceLog.date_performed <= date_type.fromisoformat(date_to))
-    query = query.order_by(MaintenanceLog.date_performed.desc())
-=======
     q = _active_query(MaintenanceLog)
     if vid := request.args.get("vehicle_id"):
         q = q.filter_by(vehicle_id=int(vid))
@@ -811,10 +676,9 @@ def get_maintenance():
     if dt := request.args.get("date_to"):
         q = q.filter(MaintenanceLog.date_performed <= date_type.fromisoformat(dt))
     q = q.order_by(MaintenanceLog.date_performed.desc())
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 20))
-    result = paginate(query, page, per_page)
+    result = paginate(q, page, per_page)
     result["items"] = maintenances_schema.dump(result["items"])
     return jsonify(result)
 
@@ -850,15 +714,9 @@ def create_maintenance():
     )
     db.session.add(log)
     if log.next_due_date:
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-        vehicle = Vehicle.query.get(log.vehicle_id)
-        if vehicle:
-            vehicle.next_service_date = log.next_due_date
-=======
         v = _active_query(Vehicle).filter_by(id=log.vehicle_id).first()
         if v:
             v.next_service_date = log.next_due_date
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     db.session.commit()
     _log_audit("maintenance_created", "maintenance", log.id, {"vehicle_id": log.vehicle_id})
     return jsonify(maintenance_schema.dump(log)), 201
@@ -907,65 +765,22 @@ def delete_maintenance(m_id):
 @vrams_bp.get("/dispatch/pending")
 @jwt_required()
 def dispatch_pending():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    pending_requests = Request.query.filter_by(status=RequestStatus.approved).order_by(Request.departure_at).all()
-    return jsonify(requests_schema.dump(pending_requests))
-=======
     reqs = _active_query(Request).filter_by(status="approved").order_by(Request.departure_at).all()
     return jsonify(requests_schema.dump(reqs))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.get("/dispatch/today")
 @jwt_required()
 def dispatch_today():
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    todays_dispatches = Dispatch.query.filter(Dispatch.created_at >= today_start).order_by(Dispatch.created_at).all()
-    return jsonify(dispatches_schema.dump(todays_dispatches))
-=======
     dispatches = _active_query(Dispatch).filter(Dispatch.created_at >= today_start).order_by(Dispatch.created_at).all()
     return jsonify(dispatches_schema.dump(dispatches))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.post("/dispatch/assign")
 @jwt_required()
 @require_roles("fleet_manager", "admin")
 def assign_dispatch():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    data = request.get_json()
-    req = Request.query.get_or_404(int(data["request_id"]))
-    vehicle = Vehicle.query.get_or_404(int(data["vehicle_id"]))
-    dispatch = Dispatch(
-        request_id=req.id,
-        vehicle_id=vehicle.id,
-        driver_id=int(data["driver_id"]),
-        dispatched_at=datetime.now(timezone.utc),
-        status=DispatchStatus.en_route
-    )
-    req.status = RequestStatus.dispatched
-    req.vehicle_id = vehicle.id
-    vehicle.status = VehicleStatus.dispatched
-    db.session.add(dispatch)
-    db.session.commit()
-    return jsonify(dispatch_schema.dump(dispatch)), 201
-
-
-@vrams_bp.patch("/dispatch/<int:dispatch_id>/status")
-def update_dispatch_status(dispatch_id):
-    dispatch = Dispatch.query.get_or_404(dispatch_id)
-    data = request.get_json()
-    dispatch.status = data["status"]
-    if data["status"] == "returned":
-        dispatch.returned_at = datetime.now(timezone.utc)
-        dispatch.request.status = RequestStatus.completed
-        dispatch.vehicle.status = VehicleStatus.available
-    if data.get("reason"):
-        dispatch.delay_reason = data["reason"]
-    db.session.commit()
-    return jsonify(dispatch_schema.dump(dispatch))
-=======
     data, error = _ensure_json()
     if error:
         return error
@@ -1084,7 +899,6 @@ def update_dispatch_status(d_id):
         return jsonify({"message": "Failed to update dispatch status"}), 500
     _log_audit("dispatch_status_updated", "dispatch", d.id, {"status": new_status.value, "reason": data.get("reason")})
     return jsonify(dispatch_schema.dump(d))
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
 
 
 @vrams_bp.patch("/dispatch/<int:d_id>")
@@ -1161,7 +975,7 @@ def patch_organization_settings():
     return jsonify(org_settings_schema.dump(o))
 
 
-# ── Users ─────────────────────────────────────────────────────────────────────
+# ── Reports & Alerts ──────────────────────────────────────────────────────────
 
 @vrams_bp.get("/reports/summary")
 @jwt_required()
@@ -1232,6 +1046,9 @@ def operational_alerts():
         "blocked_vehicles": vehicles_schema.dump(blocked_vehicles),
     })
 
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
 @vrams_bp.get("/users/drivers")
 @jwt_required()
 @require_roles("fleet_manager", "admin")
@@ -1244,17 +1061,13 @@ def get_drivers():
 @jwt_required()
 @require_roles("fleet_manager", "admin")
 def get_users():
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    query = User.query
-=======
     q = _active_query(User)
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
     if role := request.args.get("role"):
-        query = query.filter_by(role=role)
-    query = query.order_by(User.name)
+        q = q.filter_by(role=role)
+    q = q.order_by(User.name)
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 20))
-    result = paginate(query, page, per_page)
+    result = paginate(q, page, per_page)
     result["items"] = users_schema.dump(result["items"])
     return jsonify(result)
 
@@ -1271,9 +1084,6 @@ def invite_user():
         return missing_error
     if _active_query(User).filter_by(email=data["email"]).first():
         return jsonify({"message": "Email already registered"}), 409
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    user = User(
-=======
     temp_password = secrets.token_urlsafe(14)
     role_raw = data.get("role", "requester")
     try:
@@ -1281,30 +1091,14 @@ def invite_user():
     except ValueError:
         return jsonify({"message": "Invalid role"}), 400
     u = User(
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py
         name=data["name"],
         email=data["email"],
         password_hash=bcrypt.generate_password_hash(temp_password).decode("utf-8"),
         role=invite_role,
         is_active=True
     )
-    db.session.add(user)
+    db.session.add(u)
     db.session.commit()
-<<<<<<< HEAD:backend/app/controllers/vrams_controller.py
-    return jsonify(user_schema.dump(user)), 201
-
-
-@vrams_bp.patch("/users/<int:user_id>")
-def update_user(user_id):
-    user = User.query.get_or_404(user_id)
-    data = request.get_json()
-    if "role" in data:
-        user.role = data["role"]
-    if "is_active" in data:
-        user.is_active = data["is_active"]
-    db.session.commit()
-    return jsonify(user_schema.dump(user))
-=======
     invite_token = _invite_serializer().dumps({"user_id": u.id, "email": u.email})
     payload = user_schema.dump(u)
     payload["temporary_password"] = temp_password
@@ -1368,6 +1162,8 @@ def accept_invite():
     return jsonify({"message": "Password set successfully"})
 
 
+# ── Audit ─────────────────────────────────────────────────────────────────────
+
 @vrams_bp.get("/audit/logs")
 @jwt_required()
 @require_roles("fleet_manager", "admin")
@@ -1396,4 +1192,3 @@ def get_audit_logs():
         for item in result["items"]
     ]
     return jsonify(result)
->>>>>>> afd6c898f19ded5417852c8b6200ff9f7017512b:backend/app/routes/vrams.py

@@ -14,3 +14,4 @@ class UserSchema(Schema):
     driver_id_code = fields.Str()
     total_trips = fields.Int()
     created_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)

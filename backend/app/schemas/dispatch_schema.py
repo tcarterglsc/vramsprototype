@@ -14,6 +14,7 @@ class DispatchSchema(Schema):
     driver = fields.Nested(UserSchema, dump_only=True)
     dispatched_at = fields.DateTime(dump_only=True)
     returned_at = fields.DateTime(dump_only=True)
-    status = fields.Str(dump_only=True)
+    status = fields.Function(lambda obj: obj.status.value if getattr(obj, "status", None) is not None and hasattr(obj.status, "value") else obj.status, dump_only=True)
     delay_reason = fields.Str()
     created_at = fields.DateTime(dump_only=True)
+    version = fields.Int(dump_only=True)
