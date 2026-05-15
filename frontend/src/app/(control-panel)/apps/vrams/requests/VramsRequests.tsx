@@ -7,6 +7,15 @@ import EditRequestPanel from './EditRequestPanel';
 import ReviewPanel from './ReviewPanel';
 import { VramsCard, VramsHeader } from '../components/VramsUi';
 import { VramsTableBodySkeleton } from '../components/VramsLoadingSkeletons';
+import {
+	requestRef,
+	requestDestinationText,
+	requestStartTime,
+	requestStateKey,
+	requestPriorityKey,
+	requestIsFlexible,
+	userDisplayName
+} from '../utils/erdView';
 
 function StatusBadge({ status }: { status: string }) {
 	const normalized = status.includes('.') ? status.split('.').pop() ?? status : status;
@@ -98,10 +107,12 @@ function VramsRequests() {
 
 	const filtered = requests.filter((r) => {
 		const q = search.toLowerCase();
+		const ref = requestRef(r);
+		const requesterName = r.requester ? userDisplayName(r.requester) : '';
 		const matchSearch =
-			!q || r.ref.toLowerCase().includes(q) || (r.requester?.name ?? '').toLowerCase().includes(q);
-		const matchStatus = !statusFilter || r.status === statusFilter;
-		const matchPriority = !priorityFilter || r.priority === priorityFilter;
+			!q || ref.toLowerCase().includes(q) || requesterName.toLowerCase().includes(q);
+		const matchStatus = !statusFilter || requestStateKey(r) === statusFilter;
+		const matchPriority = !priorityFilter || requestPriorityKey(r) === priorityFilter;
 		return matchSearch && matchStatus && matchPriority;
 	});
 
@@ -237,53 +248,63 @@ function VramsRequests() {
 										<td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-base">No requests found</td>
 									</tr>
 								) : (
-									filtered.map((r) => (
-										<tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openReview(r.id)}>
-											<td className="px-6 py-5">
-												<p className="font-bold text-blue-600 text-base">{r.ref}</p>
-												<p className="text-sm text-gray-500 mt-0.5">{r.requester?.name}</p>
-												<p className="text-sm text-gray-400 mt-0.5">↳ {r.destination}</p>
-											</td>
-											<td className="px-6 py-5 whitespace-nowrap">
-												<p className="text-base text-gray-700">
-													{new Date(r.departure_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
-												</p>
-												<p className="text-sm text-gray-400 mt-0.5">
-													{new Date(r.departure_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-												</p>
-											</td>
-											<td className="px-6 py-5">
-												<span className="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-semibold capitalize">
-													{r.booking_type}
-												</span>
-											</td>
-											<td className="px-6 py-5">
-												<StatusBadge status={r.priority} />
-											</td>
-											<td className="px-6 py-5">
-												<StatusBadge status={r.status} />
-											</td>
-											<td className="px-6 py-5">
-												{r.status === 'pending' ? (
-													<button
-														type="button"
-														className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-														onClick={(e) => { e.stopPropagation(); openReview(r.id); }}
-													>
-														Review
-													</button>
-												) : (
-													<button
-														type="button"
-														className="px-4 py-2 text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-														onClick={(e) => { e.stopPropagation(); openReview(r.id); }}
-													>
-														View
-													</button>
-												)}
-											</td>
-										</tr>
-									))
+									filtered.map((r) => {
+										const ref = requestRef(r);
+										const requesterName = r.requester ? userDisplayName(r.requester) : 'Unknown';
+										const destination = requestDestinationText(r);
+										const startTime = requestStartTime(r);
+										const status = requestStateKey(r);
+										const priority = requestPriorityKey(r);
+										const isFlexible = requestIsFlexible(r);
+										
+										return (
+											<tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openReview(r.id)}>
+												<td className="px-6 py-5">
+													<p className="font-bold text-blue-600 text-base">{ref}</p>
+													<p className="text-sm text-gray-500 mt-0.5">{requesterName}</p>
+													<p className="text-sm text-gray-400 mt-0.5">↳ {destination}</p>
+												</td>
+												<td className="px-6 py-5 whitespace-nowrap">
+													<p className="text-base text-gray-700">
+														{new Date(startTime).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
+													</p>
+													<p className="text-sm text-gray-400 mt-0.5">
+														{new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+													</p>
+												</td>
+												<td className="px-6 py-5">
+													<span className="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-semibold capitalize">
+														{isFlexible ? 'flexible' : 'fixed'}
+													</span>
+												</td>
+												<td className="px-6 py-5">
+													<StatusBadge status={priority} />
+												</td>
+												<td className="px-6 py-5">
+													<StatusBadge status={status} />
+												</td>
+												<td className="px-6 py-5">
+													{status === 'pending' ? (
+														<button
+															type="button"
+															className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+															onClick={(e) => { e.stopPropagation(); openReview(r.id); }}
+														>
+															Review
+														</button>
+													) : (
+														<button
+															type="button"
+															className="px-4 py-2 text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+															onClick={(e) => { e.stopPropagation(); openReview(r.id); }}
+														>
+															View
+														</button>
+													)}
+												</td>
+											</tr>
+										);
+									})
 								)}
 							</tbody>
 						</table>

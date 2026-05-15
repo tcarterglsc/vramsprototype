@@ -8,6 +8,13 @@ import type { FleetDocumentRow } from '../types';
 import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
 import { VramsTableBodySkeleton } from '../components/VramsLoadingSkeletons';
 import { API_BASE_URL } from '@/utils/apiFetch';
+import {
+	documentFileName,
+	documentDtTo,
+	vehiclePlateNumber,
+	vehicleMake,
+	vehicleModel
+} from '../utils/erdView';
 
 function docHref(doc: FleetDocumentRow): string | null {
 	if (!doc.file_url) return null;
@@ -103,11 +110,17 @@ export default function VramsDocuments() {
 						) : (
 							rows.map((doc) => {
 								const href = docHref(doc);
+								const fileName = documentFileName(doc);
+								const expiresAt = documentDtTo(doc);
+								const vPlate = vehiclePlateNumber(doc.vehicle);
+								const vMake = vehicleMake(doc.vehicle);
+								const vModel = vehicleModel(doc.vehicle);
+								
 								return (
 									<tr key={doc.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80">
 										<td className="px-16 py-12 font-semibold text-slate-900 max-w-[220px]">
-											<span className="truncate block" title={doc.file_name || undefined}>
-												{doc.file_name || '—'}
+											<span className="truncate block" title={fileName || undefined}>
+												{fileName || '—'}
 											</span>
 										</td>
 										<td className="px-16 py-12 text-slate-700 capitalize">{formatDocType(doc.doc_type)}</td>
@@ -116,10 +129,10 @@ export default function VramsDocuments() {
 												to={`/apps/vrams/vehicles/${doc.vehicle.id}`}
 												className="font-semibold text-indigo-600 hover:underline whitespace-nowrap"
 											>
-												{doc.vehicle.plate}
+												{vPlate}
 											</Link>
 											<span className="text-slate-500 text-xs block mt-2">
-												{doc.vehicle.make} {doc.vehicle.model}
+												{vMake} {vModel}
 											</span>
 										</td>
 										<td className="px-16 py-12 text-slate-600 whitespace-nowrap">
@@ -131,8 +144,8 @@ export default function VramsDocuments() {
 												: '—'}
 										</td>
 										<td className="px-16 py-12 text-slate-600 whitespace-nowrap">
-											{doc.expires_at
-												? new Date(doc.expires_at).toLocaleDateString(undefined, {
+											{expiresAt
+												? new Date(expiresAt).toLocaleDateString(undefined, {
 														day: 'numeric',
 														month: 'short',
 														year: 'numeric'

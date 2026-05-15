@@ -15,23 +15,21 @@ import {
 } from '../../VramsApi';
 import VehicleIllustration from '../../components/VehicleIllustration';
 import { VramsCard, VramsHeader, VramsPage } from '../../components/VramsUi';
+import { userDisplayName } from '../../utils/erdView';
 
 const schema = z.object({
 	plate: z.string().min(3, 'Required').toUpperCase(),
-	vin: z.string().length(17, '17 characters required').optional().or(z.literal('')),
+	vin: z
+		.string()
+		.default('')
+		.refine((s) => s === '' || s.length === 17, { message: 'VIN must be 17 characters when provided' }),
 	make: z.string().min(1, 'Required'),
 	model: z.string().min(1, 'Required'),
 	year: z.coerce.number().min(1990).max(new Date().getFullYear() + 1),
 	vehicle_type: z.enum(['SUV', 'Van', 'Truck', 'Bus', 'Sedan', 'Pickup']),
-	fuel_type: z.enum(['Diesel', 'Petrol', 'Hybrid', 'Electric']).optional(),
-	transmission: z.string().optional(),
-	seating_capacity: z.coerce.number().min(1).optional(),
-	engine_size: z.string().optional(),
-	color: z.string().optional(),
 	odometer_km: z.coerce.number().min(0).optional(),
 	fitness_expiry: z.string().min(1, 'Required'),
 	insurance_expiry: z.string().min(1, 'Required'),
-	next_service_date: z.string().optional(),
 	status: z.enum(['available', 'in_service', 'out_of_service']),
 	bookable: z.boolean(),
 	default_driver_id: z.coerce.number().optional(),
@@ -39,16 +37,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
-const COLORS = [
-	{ label: 'Black', value: 'Black', hex: '#1f2937' },
-	{ label: 'White', value: 'White', hex: '#f9fafb' },
-	{ label: 'Silver', value: 'Silver', hex: '#9ca3af' },
-	{ label: 'Blue', value: 'Blue', hex: '#3b82f6' },
-	{ label: 'Red', value: 'Red', hex: '#ef4444' },
-	{ label: 'Graphite', value: 'Graphite', hex: '#4b5563' },
-	{ label: 'Gold', value: 'Gold', hex: '#f59e0b' }
-];
 
 const STATUS_OPTIONS = [
 	{
@@ -215,7 +203,6 @@ function VehicleRegister() {
 		control,
 		handleSubmit,
 		reset,
-		watch,
 		formState: { errors }
 	} = useForm<FormValues>({
 		resolver: zodResolver(schema),
@@ -231,15 +218,9 @@ function VehicleRegister() {
 			model: existingVehicle.model,
 			year: existingVehicle.year,
 			vehicle_type: existingVehicle.vehicle_type,
-			fuel_type: existingVehicle.fuel_type,
-			transmission: existingVehicle.transmission ?? '',
-			seating_capacity: existingVehicle.seating_capacity,
-			engine_size: existingVehicle.engine_size ?? '',
-			color: existingVehicle.color ?? '',
 			odometer_km: existingVehicle.odometer_km,
 			fitness_expiry: existingVehicle.fitness_expiry ?? '',
 			insurance_expiry: existingVehicle.insurance_expiry ?? '',
-			next_service_date: existingVehicle.next_service_date ?? '',
 			status: existingVehicle.status === 'dispatched' ? 'in_service' : existingVehicle.status,
 			bookable: existingVehicle.bookable,
 			default_driver_id: existingVehicle.default_driver?.id,
@@ -247,7 +228,6 @@ function VehicleRegister() {
 		});
 	}, [isEditMode, existingVehicle, reset]);
 
-	const selectedColor    = watch('color');
 	const previewType      = useWatch({ control, name: 'vehicle_type' });
 	const previewPlate     = useWatch({ control, name: 'plate' });
 	const previewMake      = useWatch({ control, name: 'make' });
@@ -363,7 +343,7 @@ function VehicleRegister() {
 							/>
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 								<Field
-									label="Registration Plate"
+									label="Plate number"
 									required
 									hint="Enter plate in standard format"
 									error={errors.plate?.message}
@@ -387,8 +367,7 @@ function VehicleRegister() {
 								</Field>
 
 								<Field
-									label="Vehicle Identification Number (VIN)"
-									required
+									label="VIN (extension)"
 									error={errors.vin?.message}
 								>
 									<Controller
@@ -478,7 +457,7 @@ function VehicleRegister() {
 								</Field>
 
 								<Field
-									label="Vehicle Type"
+									label="Vehicle type"
 									required
 									error={errors.vehicle_type?.message}
 								>
@@ -504,105 +483,7 @@ function VehicleRegister() {
 									/>
 								</Field>
 
-								<Field label="Fuel Type">
-									<Controller
-										name="fuel_type"
-										control={control}
-										render={({ field }) => (
-											<select
-												{...field}
-												className={selectCls}
-											>
-												<option value="">Select fuel</option>
-												{['Diesel', 'Petrol', 'Hybrid', 'Electric'].map((f) => (
-													<option
-														key={f}
-														value={f}
-													>
-														{f}
-													</option>
-												))}
-											</select>
-										)}
-									/>
-								</Field>
-
-								<Field label="Transmission">
-									<Controller
-										name="transmission"
-										control={control}
-										render={({ field }) => (
-											<select
-												{...field}
-												className={selectCls}
-											>
-												<option value="">Select Type</option>
-												<option value="Automatic">Automatic</option>
-												<option value="Manual">Manual</option>
-											</select>
-										)}
-									/>
-								</Field>
-
-								<Field label="Seating Capacity">
-									<Controller
-										name="seating_capacity"
-										control={control}
-										render={({ field }) => (
-											<div className="relative">
-												<span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														fill="none"
-														viewBox="0 0 24 24"
-														strokeWidth={1.5}
-														stroke="currentColor"
-														className="w-4 h-4"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-														/>
-													</svg>
-												</span>
-												<input
-													{...field}
-													type="number"
-													min={1}
-													className={`${inputCls} pl-9`}
-													placeholder="e.g. 8"
-												/>
-											</div>
-										)}
-									/>
-								</Field>
-							</div>
-						</section>
-
-						{/* 02 Physical Details */}
-						<section>
-							<SectionHeader
-								num="02"
-								label="Physical Details"
-								icon=""
-							/>
-							<div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-								<Field label="Engine Size">
-									<Controller
-										name="engine_size"
-										control={control}
-										render={({ field }) => (
-											<input
-												{...field}
-												className={inputCls}
-												placeholder="e.g. 2.8L V6"
-											/>
-										)}
-									/>
-								</Field>
-
-								<Field label="Odometer Reading">
+								<Field label="Odometer (extension · km)">
 									<Controller
 										name="odometer_km"
 										control={control}
@@ -622,47 +503,19 @@ function VehicleRegister() {
 										)}
 									/>
 								</Field>
-
-								<Field label="Vehicle Colour">
-									<div className="space-y-2">
-										<div className="flex gap-2 flex-wrap">
-											<Controller
-												name="color"
-												control={control}
-												render={({ field }) =>
-													COLORS.map((c) => (
-														<button
-															key={c.value}
-															type="button"
-															title={c.label}
-															onClick={() => field.onChange(c.value)}
-															className={`w-7 h-7 rounded-full border-2 transition-all ${
-																field.value === c.value
-																	? 'border-blue-500 scale-110 shadow'
-																	: 'border-gray-200 hover:scale-105'
-															}`}
-															style={{ background: c.hex }}
-														/>
-													))
-												}
-											/>
-										</div>
-										<p className="text-xs text-gray-500 capitalize">{selectedColor || 'None selected'}</p>
-									</div>
-								</Field>
 							</div>
 						</section>
 
-						{/* 03 Compliance & Documents */}
+						{/* 02 Compliance & Documents */}
 						<section>
 							<SectionHeader
-								num="03"
+								num="02"
 								label="Compliance & Documents"
 								icon=""
 							/>
-							<div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
 								<Field
-									label="Fitness Certificate Expiry"
+									label="Fitness expiry date"
 									required
 									hint="Renewal required annually"
 									error={errors.fitness_expiry?.message}
@@ -683,27 +536,13 @@ function VehicleRegister() {
 								</Field>
 
 								<Field
-									label="Insurance Expiry"
+									label="Insurance expiry date"
 									required
 									hint="Comprehensive or third party"
 									error={errors.insurance_expiry?.message}
 								>
 									<Controller
 										name="insurance_expiry"
-										control={control}
-										render={({ field }) => (
-											<input
-												{...field}
-												type="date"
-												className={inputCls}
-											/>
-										)}
-									/>
-								</Field>
-
-								<Field label="Next Service Due">
-									<Controller
-										name="next_service_date"
 										control={control}
 										render={({ field }) => (
 											<input
@@ -743,10 +582,10 @@ function VehicleRegister() {
 							</div>
 						</section>
 
-						{/* 04 Availability & Assignment */}
+						{/* 03 Availability & Assignment */}
 						<section>
 							<SectionHeader
-								num="04"
+								num="03"
 								label="Availability & Assignment"
 								icon=""
 							/>
@@ -791,7 +630,7 @@ function VehicleRegister() {
 
 								{/* Bookable toggle */}
 								<div>
-									<p className="text-xs font-semibold text-gray-600 mb-2">Bookable by Staff</p>
+									<p className="text-xs font-semibold text-gray-600 mb-2">Bookable (is_bookable)</p>
 									<Controller
 										name="bookable"
 										control={control}
@@ -866,7 +705,7 @@ function VehicleRegister() {
 																key={d.id}
 																value={d.id}
 															>
-																{d.name} — {d.driver_id_code}
+																{userDisplayName(d)} — {d.driver_id_code}
 															</option>
 														))}
 													</select>
@@ -879,14 +718,14 @@ function VehicleRegister() {
 							</div>
 						</section>
 
-						{/* 05 Additional Notes */}
+						{/* 04 Notes */}
 						<section>
 							<SectionHeader
-								num="05"
-								label="Additional Notes"
+								num="04"
+								label="Notes"
 								icon=""
 							/>
-							<Field label="Notes / Remarks">
+							<Field label="Notes">
 								<Controller
 									name="notes"
 									control={control}
@@ -967,7 +806,6 @@ function VehicleRegister() {
 							) : (
 								<VehicleIllustration
 									vehicleType={previewType || 'Sedan'}
-									color={selectedColor}
 									style={{ width: '100%', maxHeight: 180 }}
 								/>
 							)}
@@ -992,15 +830,6 @@ function VehicleRegister() {
 								{[previewMake, previewModel, previewYear ? String(previewYear) : ''].filter(Boolean).join(' ') || 'Enter make, model & year'}
 							</p>
 							<div className="flex items-center gap-2 pt-1">
-								{selectedColor && (
-									<>
-										<div
-											className="w-4 h-4 rounded-full border border-gray-200 flex-shrink-0"
-											style={{ background: COLORS.find(c => c.value === selectedColor)?.hex ?? selectedColor }}
-										/>
-										<span className="text-xs text-gray-500">{selectedColor}</span>
-									</>
-								)}
 								{previewType && (
 									<span className="ml-auto text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
 										{previewType}

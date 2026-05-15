@@ -11,6 +11,16 @@ import {
 import type { Dispatch, Vehicle, VramsUser, InviteUserResponse } from '../types';
 import { VramsCard, VramsPage } from '../components/VramsUi';
 import { notifyRtk } from '../utils/vramsNotify';
+import {
+	userDisplayName,
+	userEmail,
+	driverLicenceNumber,
+	vehiclePlateNumber,
+	vehicleMake,
+	vehicleModel,
+	requestDestinationText,
+	bookingStatusKey
+} from '../utils/erdView';
 
 function statusTone(active: boolean): string {
 	return active
@@ -37,7 +47,8 @@ export default function VramsDrivers() {
 	const activeDispatchByDriver = useMemo(() => {
 		const map = new Map<number, Dispatch>();
 		dispatches.forEach((d) => {
-			if (d.driver_id && d.status !== 'returned' && d.status !== 'cancelled') {
+			const status = bookingStatusKey(d);
+			if (d.driver_id && status !== 'returned' && status !== 'cancelled') {
 				map.set(d.driver_id, d);
 			}
 		});
@@ -47,11 +58,14 @@ export default function VramsDrivers() {
 	const filteredDrivers = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		if (!q) return drivers;
-		return drivers.filter((d: VramsUser) =>
-			[d.name, d.email, d.phone, d.department, d.driver_id_code, d.license_number]
+		return drivers.filter((d: VramsUser) => {
+			const name = userDisplayName(d);
+			const email = userEmail(d);
+			const license = driverLicenceNumber(d);
+			return [name, email, d.phone, d.department, d.driver_id_code, license]
 				.filter(Boolean)
-				.some((v) => String(v).toLowerCase().includes(q))
-		);
+				.some((v) => String(v).toLowerCase().includes(q));
+		});
 	}, [drivers, query]);
 
 	const vehicleByAssignedDriver = useMemo(() => {
@@ -175,11 +189,14 @@ export default function VramsDrivers() {
 						className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 					>
 						<option value="">Select driver</option>
-						{drivers.map((d: VramsUser) => (
-							<option key={d.id} value={d.id}>
-								{d.name} {d.driver_id_code ? `- ${d.driver_id_code}` : ''}
-							</option>
-						))}
+						{drivers.map((d: VramsUser) => {
+							const name = userDisplayName(d);
+							return (
+								<option key={d.id} value={d.id}>
+									{name} {d.driver_id_code ? `- ${d.driver_id_code}` : ''}
+								</option>
+							);
+						})}
 					</select>
 					<select
 						value={selectedVehicleId}
@@ -187,11 +204,16 @@ export default function VramsDrivers() {
 						className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 					>
 						<option value="">Select vehicle</option>
-						{vehicles.map((v: Vehicle) => (
-							<option key={v.id} value={v.id}>
-								{v.plate} - {v.make} {v.model}
-							</option>
-						))}
+						{vehicles.map((v: Vehicle) => {
+							const plate = vehiclePlateNumber(v);
+							const make = vehicleMake(v);
+							const model = vehicleModel(v);
+							return (
+								<option key={v.id} value={v.id}>
+									{plate} - {make} {model}
+								</option>
+							);
+						})}
 					</select>
 				</div>
 			</VramsCard>
@@ -209,11 +231,19 @@ export default function VramsDrivers() {
 						filteredDrivers.map((driver: VramsUser) => {
 							const activeDispatch = activeDispatchByDriver.get(driver.id);
 							const assignedVehicle = vehicleByAssignedDriver.get(driver.id);
+							const driverName = userDisplayName(driver);
+							const driverEmail = userEmail(driver);
+							const license = driverLicenceNumber(driver);
+							const vPlate = assignedVehicle ? vehiclePlateNumber(assignedVehicle) : null;
+							const vMake = assignedVehicle ? vehicleMake(assignedVehicle) : '';
+							const vModel = assignedVehicle ? vehicleModel(assignedVehicle) : '';
+							const destination = activeDispatch?.request ? requestDestinationText(activeDispatch.request) : 'Route details unavailable';
+							
 							return (
 								<div key={driver.id} className="px-5 py-4 flex items-start justify-between gap-3 hover:bg-slate-50">
 									<div className="min-w-0">
 										<div className="flex items-center gap-2 flex-wrap">
-											<p className="font-semibold text-slate-900">{driver.name}</p>
+											<p className="font-semibold text-slate-900">{driverName}</p>
 											<span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusTone(driver.is_active)}`}>
 												{driver.is_active ? 'Active' : 'Inactive'}
 											</span>
@@ -223,19 +253,19 @@ export default function VramsDrivers() {
 												</span>
 											) : null}
 										</div>
-										<p className="text-sm text-slate-600 mt-0.5">{driver.email}</p>
+										<p className="text-sm text-slate-600 mt-0.5">{driverEmail}</p>
 										<p className="text-xs text-slate-500 mt-0.5">
 											{driver.phone ?? 'No phone'} · {driver.department ?? 'No department'}
 										</p>
 										<p className="text-xs text-slate-500 mt-0.5">
-											License: {driver.license_number ?? 'Not set'} · ID: {driver.driver_id_code ?? 'Not set'}
+											License: {license ?? 'Not set'} · ID: {driver.driver_id_code ?? 'Not set'}
 										</p>
 										<p className="text-xs text-slate-500 mt-0.5">
-											Assigned vehicle: {assignedVehicle ? `${assignedVehicle.plate} (${assignedVehicle.make} ${assignedVehicle.model})` : 'Unassigned'}
+											Assigned vehicle: {assignedVehicle ? `${vPlate} (${vMake} ${vModel})` : 'Unassigned'}
 										</p>
 										{activeDispatch ? (
 											<p className="text-sm text-slate-700 mt-1">
-												Current route: {activeDispatch.request?.destination ?? 'Route details unavailable'}
+												Current route: {destination}
 											</p>
 										) : null}
 									</div>

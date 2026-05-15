@@ -12,6 +12,19 @@ import type { VramsRequest, MaintenanceLog } from '../types';
 import { VramsCard, VramsPage } from '../components/VramsUi';
 import VehicleIllustration from '../components/VehicleIllustration';
 import { VramsListBlockSkeleton } from '../components/VramsLoadingSkeletons';
+import {
+	requestRef,
+	requestDestinationText,
+	requestStartTime,
+	requestStateKey,
+	requestPriorityKey,
+	userDisplayName,
+	vehiclePlateNumber,
+	vehicleStatusKey,
+	serviceDate,
+	serviceTypeLabel,
+	vehicleTypeLabel
+} from '../utils/erdView';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, string> = {
@@ -58,16 +71,16 @@ function VramsDashboard() {
 
 	const requests: VramsRequest[] = requestsPage?.items ?? [];
 	const maintenance: MaintenanceLog[] = maintenancePage?.items ?? [];
-	const pending = requests.filter((r) => r.status === 'pending').slice(0, 3);
-	const leadDispatch = requests.find((r) => r.status === 'approved') ?? requests[0];
+	const pending = requests.filter((r) => requestStateKey(r) === 'pending').slice(0, 3);
+	const leadDispatch = requests.find((r) => requestStateKey(r) === 'approved') ?? requests[0];
 	const totalRequests = requests.length || 1;
-	const urgentCount = requests.filter((r) => r.priority === 'urgent').length;
-	const highCount = requests.filter((r) => r.priority === 'high').length;
-	const normalCount = requests.filter((r) => r.priority === 'normal').length;
-	const approvedCount = requests.filter((r) => r.status === 'approved').length;
-	const dispatchedCount = requests.filter((r) => r.status === 'dispatched').length;
-	const rejectedCount = requests.filter((r) => r.status === 'rejected').length;
-	const completedCount = requests.filter((r) => r.status === 'completed').length;
+	const urgentCount = requests.filter((r) => requestPriorityKey(r) === 'urgent').length;
+	const highCount = requests.filter((r) => requestPriorityKey(r) === 'high').length;
+	const normalCount = requests.filter((r) => requestPriorityKey(r) === 'normal').length;
+	const approvedCount = requests.filter((r) => requestStateKey(r) === 'approved').length;
+	const dispatchedCount = requests.filter((r) => requestStateKey(r) === 'dispatched').length;
+	const rejectedCount = requests.filter((r) => requestStateKey(r) === 'rejected').length;
+	const completedCount = requests.filter((r) => requestStateKey(r) === 'completed').length;
 
 	return (
 		<VramsPage>
@@ -113,28 +126,37 @@ function VramsDashboard() {
 								) : pending.length === 0 ? (
 									<div className="px-5 py-8 text-sm text-slate-400 text-center">No pending requests right now.</div>
 								) : (
-									pending.map((r) => (
-										<div key={r.id} className="px-5 py-4 flex items-start justify-between gap-3 hover:bg-slate-50">
-											<div className="min-w-0">
-												<p className="font-semibold text-slate-900">{r.requester?.name ?? 'Unknown requester'}</p>
-												<p className="text-xs text-slate-600">{r.requester?.department ?? 'Department not set'} · {r.ref}</p>
-												<p className="text-base text-slate-800 mt-1 font-medium">{r.destination}</p>
-												<p className="text-xs text-slate-600 mt-1">
-													{new Date(r.departure_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-												</p>
+									pending.map((r) => {
+										const requesterName = r.requester ? userDisplayName(r.requester) : 'Unknown requester';
+										const requesterDept = r.requester?.department ?? 'Department not set';
+										const ref = requestRef(r);
+										const destination = requestDestinationText(r);
+										const startTime = requestStartTime(r);
+										const priority = requestPriorityKey(r);
+										
+										return (
+											<div key={r.id} className="px-5 py-4 flex items-start justify-between gap-3 hover:bg-slate-50">
+												<div className="min-w-0">
+													<p className="font-semibold text-slate-900">{requesterName}</p>
+													<p className="text-xs text-slate-600">{requesterDept} · {ref}</p>
+													<p className="text-base text-slate-800 mt-1 font-medium">{destination}</p>
+													<p className="text-xs text-slate-600 mt-1">
+														{new Date(startTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+													</p>
+												</div>
+												<div className="flex items-center gap-2">
+													<StatusBadge status={priority} />
+													<button
+														type="button"
+														onClick={() => navigate(`/apps/vrams/requests?open=${r.id}`)}
+														className="px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700"
+													>
+														Review
+													</button>
+												</div>
 											</div>
-											<div className="flex items-center gap-2">
-												<StatusBadge status={r.priority} />
-												<button
-													type="button"
-													onClick={() => navigate(`/apps/vrams/requests?open=${r.id}`)}
-													className="px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700"
-												>
-													Review
-												</button>
-											</div>
-										</div>
-									))
+										);
+									})
 								)}
 							</div>
 						</VramsCard>

@@ -23,6 +23,18 @@ import type { MaintenanceLog } from '../types';
 import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
 import { VramsStatRowSkeleton, VramsTableBodySkeleton } from '../components/VramsLoadingSkeletons';
 import { notifyRtk } from '../utils/vramsNotify';
+import {
+	vehiclePlateNumber,
+	vehicleMake,
+	vehicleModel,
+	serviceTypeLabel,
+	serviceDate,
+	serviceTechnician,
+	serviceCost,
+	serviceNextDate,
+	serviceMileage,
+	serviceDescription
+} from '../utils/erdView';
 
 const schema = z.object({
 	vehicle_id: z.coerce.number().min(1),
@@ -78,10 +90,14 @@ function VramsMaintenance() {
 	const items: MaintenanceLog[] = page?.items ?? [];
 
 	const stats = useMemo(() => {
-		const overdue = items.filter((i) => i.next_due_date && new Date(i.next_due_date) < new Date()).length;
+		const overdue = items.filter((i) => {
+			const nextDate = serviceNextDate(i);
+			return nextDate && new Date(nextDate) < new Date();
+		}).length;
 		const soon = items.filter((i) => {
-			if (!i.next_due_date) return false;
-			const d = (new Date(i.next_due_date).getTime() - Date.now()) / 86400000;
+			const nextDate = serviceNextDate(i);
+			if (!nextDate) return false;
+			const d = (new Date(nextDate).getTime() - Date.now()) / 86400000;
 			return d >= 0 && d <= 30;
 		}).length;
 		return { total: page?.total ?? 0, overdue, soon, ok: (page?.total ?? 0) - overdue - soon };
@@ -89,7 +105,7 @@ function VramsMaintenance() {
 
 	const filtered = items.filter((i) => {
 		const matchV = !vehicleFilter || String(i.vehicle_id) === vehicleFilter;
-		const matchT = !typeFilter || i.service_type === typeFilter;
+		const matchT = !typeFilter || serviceTypeLabel(i) === typeFilter;
 		return matchV && matchT;
 	});
 
@@ -99,26 +115,37 @@ function VramsMaintenance() {
 
 	useEffect(() => {
 		if (!editingLog) return;
+		const svcDate = serviceDate(editingLog);
+		const svcType = serviceTypeLabel(editingLog);
+		const svcTech = serviceTechnician(editingLog);
+		const svcCost = serviceCost(editingLog);
+		const svcMileage = serviceMileage(editingLog);
+		const svcNextDate = serviceNextDate(editingLog);
+		const svcDesc = serviceDescription(editingLog);
+		
 		reset({
 			vehicle_id: editingLog.vehicle_id,
-			service_type: editingLog.service_type,
-			date_performed: editingLog.date_performed?.slice(0, 10),
-			technician: editingLog.technician ?? '',
-			cost_kes: editingLog.cost_kes ?? undefined,
-			mileage_at_service: editingLog.mileage_at_service ?? undefined,
-			next_due_date: editingLog.next_due_date?.slice(0, 10),
-			notes: editingLog.notes ?? ''
+			service_type: String(svcType),
+			date_performed: svcDate?.slice(0, 10),
+			technician: svcTech ?? '',
+			cost_kes: svcCost ?? undefined,
+			mileage_at_service: svcMileage ?? undefined,
+			next_due_date: svcNextDate?.slice(0, 10),
+			notes: svcDesc ?? ''
 		});
 	}, [editingLog, reset]);
 
 	const vehicleOptions = useMemo(() => {
 		const list = [...(vehiclesPage?.items ?? [])];
 		if (editingLog?.vehicle_id && !list.some((v) => v.id === editingLog.vehicle_id)) {
+			const vPlate = editingLog.vehicle ? vehiclePlateNumber(editingLog.vehicle) : `#${editingLog.vehicle_id}`;
+			const vMake = editingLog.vehicle ? vehicleMake(editingLog.vehicle) : 'Vehicle';
+			const vModel = editingLog.vehicle ? vehicleModel(editingLog.vehicle) : '';
 			list.unshift({
 				id: editingLog.vehicle_id,
-				plate: editingLog.vehicle?.plate ?? `#${editingLog.vehicle_id}`,
-				make: editingLog.vehicle?.make ?? 'Vehicle',
-				model: editingLog.vehicle?.model ?? ''
+				plate: vPlate,
+				make: vMake,
+				model: vModel
 			} as any);
 		}
 		return list;
@@ -126,12 +153,12 @@ function VramsMaintenance() {
 
 	const serviceTypeOptions = useMemo(() => {
 		const base = [...SERVICE_TYPES];
-		const current = editingLog?.service_type?.trim();
+		const current = editingLog ? String(serviceTypeLabel(editingLog)).trim() : '';
 		if (current && !base.includes(current)) {
 			base.unshift(current);
 		}
 		return base;
-	}, [editingLog?.service_type]);
+	}, [editingLog]);
 
 	async function onSubmit(values: FormValues) {
 		try {
@@ -226,7 +253,7 @@ function VramsMaintenance() {
 						>
 							<option value="">All Vehicles</option>
 							{(vehiclesPage?.items ?? []).map((v) => (
-								<option key={v.id} value={v.id}>{v.plate}</option>
+								<option key={v.id} value={v.id}>{vehiclePlateNumber(v)}</option>
 							))}
 						</select>
 						<select
@@ -259,20 +286,29 @@ function VramsMaintenance() {
 								) : filtered.length === 0 ? (
 									<tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-base">No records found</td></tr>
 								) : (
-									filtered.map((m) => (
-										<tr key={m.id} className="hover:bg-gray-50">
-											<td className="px-6 py-5">
-												<span className="bg-gray-100 rounded-lg px-3 py-1.5 font-mono text-sm font-bold text-gray-800">
-													{m.vehicle?.plate ?? `#${m.vehicle_id}`}
-												</span>
-												<p className="text-sm text-gray-500 mt-1.5">{m.vehicle?.make} {m.vehicle?.model}</p>
+									filtered.map((m) => {
+										const vPlate = m.vehicle ? vehiclePlateNumber(m.vehicle) : `#${m.vehicle_id}`;
+										const vMake = m.vehicle ? vehicleMake(m.vehicle) : '';
+										const vModel = m.vehicle ? vehicleModel(m.vehicle) : '';
+										const svcType = serviceTypeLabel(m);
+										const svcDate = serviceDate(m);
+										const svcTech = serviceTechnician(m);
+										const svcNextDate = serviceNextDate(m);
+										
+										return (
+											<tr key={m.id} className="hover:bg-gray-50">
+												<td className="px-6 py-5">
+													<span className="bg-gray-100 rounded-lg px-3 py-1.5 font-mono text-sm font-bold text-gray-800">
+														{vPlate}
+													</span>
+													<p className="text-sm text-gray-500 mt-1.5">{vMake} {vModel}</p>
+												</td>
+												<td className="px-6 py-5 text-base font-semibold text-gray-700">{svcType}</td>
+												<td className="px-6 py-5 text-base text-gray-600 whitespace-nowrap">
+													{new Date(svcDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
 											</td>
-											<td className="px-6 py-5 text-base font-semibold text-gray-700">{m.service_type}</td>
-											<td className="px-6 py-5 text-base text-gray-600 whitespace-nowrap">
-												{new Date(m.date_performed).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-											</td>
-											<td className="px-6 py-5 text-base text-gray-600">{m.technician}</td>
-											<td className="px-6 py-5"><DueDateChip date={m.next_due_date} /></td>
+											<td className="px-6 py-5 text-base text-gray-600">{svcTech}</td>
+											<td className="px-6 py-5"><DueDateChip date={svcNextDate} /></td>
 											<td className="px-6 py-5 whitespace-nowrap">
 												<div className="flex items-center gap-2">
 													<button type="button" onClick={() => handleEditRow(m)} className="px-2.5 py-1.5 text-xs font-semibold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50">Edit</button>
@@ -280,7 +316,8 @@ function VramsMaintenance() {
 												</div>
 											</td>
 										</tr>
-									))
+										);
+									})
 								)}
 							</tbody>
 						</table>
@@ -320,7 +357,7 @@ function VramsMaintenance() {
 						)} />
 						<Controller name="service_type" control={control} render={({ field }) => (
 							<TextField
-								label="Service Type *"
+								label="Service type *"
 								select
 								fullWidth
 								error={!!errors.service_type}
@@ -333,19 +370,31 @@ function VramsMaintenance() {
 							</TextField>
 						)} />
 						<Controller name="date_performed" control={control} render={({ field }) => (
-							<TextField {...field} label="Date Performed *" type="date" fullWidth InputLabelProps={{ shrink: true }} error={!!errors.date_performed} />
+							<TextField {...field} label="Service date *" type="date" fullWidth InputLabelProps={{ shrink: true }} error={!!errors.date_performed} />
 						)} />
 						<Controller name="technician" control={control} render={({ field }) => (
-							<TextField {...field} label="Technician / Provider *" fullWidth placeholder="e.g. AutoXpress Nairobi" error={!!errors.technician} InputLabelProps={{ shrink: true }} />
+							<TextField {...field} label="Technician (extension) *" fullWidth placeholder="e.g. AutoXpress Nairobi" error={!!errors.technician} InputLabelProps={{ shrink: true }} />
+						)} />
+						<Controller name="mileage_at_service" control={control} render={({ field }) => (
+							<TextField
+								{...field}
+								label="Mileage at service (extension · km)"
+								type="number"
+								fullWidth
+								inputProps={{ min: 0 }}
+								InputLabelProps={{ shrink: true }}
+								value={field.value ?? ''}
+								onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+							/>
 						)} />
 						<Controller name="cost_kes" control={control} render={({ field }) => (
 							<TextField {...field} label="Cost (KES)" type="number" fullWidth inputProps={{ min: 0, step: 0.01 }} InputLabelProps={{ shrink: true }} />
 						)} />
 						<Controller name="next_due_date" control={control} render={({ field }) => (
-							<TextField {...field} label="Next Service Due" type="date" fullWidth InputLabelProps={{ shrink: true }} />
+							<TextField {...field} label="Next service date" type="date" fullWidth InputLabelProps={{ shrink: true }} />
 						)} />
 						<Controller name="notes" control={control} render={({ field }) => (
-							<TextField {...field} label="Notes" multiline rows={3} fullWidth placeholder="Add any additional notes..." InputLabelProps={{ shrink: true }} />
+							<TextField {...field} label="Description" multiline rows={3} fullWidth placeholder="Service description..." InputLabelProps={{ shrink: true }} />
 						)} />
 
 						<div className="flex gap-3 pt-2">

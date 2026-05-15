@@ -1,11 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_smorest import Blueprint
 from sqlalchemy import func
+
 from app.extensions import db, bcrypt
 from app.models import User
 from app.models.user import UserRole
+from app.schemas.auth_schemas import LoginResponseSchema
 
-auth_bp = Blueprint("auth", __name__)
+blp = Blueprint("VramsAuth", __name__, url_prefix="/api/auth")
 
 
 def _auth_user_payload(user: User):
@@ -26,7 +29,8 @@ def _auth_user_payload(user: User):
     }
 
 
-@auth_bp.post("/login")
+@blp.route("/login", methods=["POST"])
+@blp.response(200, LoginResponseSchema)
 def login():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
@@ -45,19 +49,16 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401
 
     token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
-    return jsonify({
-        "access_token": token,
-        "user": _auth_user_payload(user),
-    })
+    return {"access_token": token, "user": _auth_user_payload(user)}
 
 
-@auth_bp.post("/logout")
+@blp.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
     return jsonify({"message": "Logged out"})
 
 
-@auth_bp.get("/me")
+@blp.route("/me")
 @jwt_required()
 def me():
     user_id = get_jwt_identity()
@@ -65,7 +66,7 @@ def me():
     return jsonify(_auth_user_payload(user))
 
 
-@auth_bp.patch("/me")
+@blp.route("/me", methods=["PATCH"])
 @jwt_required()
 def patch_me():
     user = User.query.filter(User.deleted_at.is_(None)).filter_by(id=int(get_jwt_identity())).first_or_404()

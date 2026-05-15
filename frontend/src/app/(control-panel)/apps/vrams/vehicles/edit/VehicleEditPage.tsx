@@ -6,12 +6,12 @@ import { VramsCard, VramsHeader, VramsPage } from '../../components/VramsUi';
 import { VramsFormPageSkeleton } from '../../components/VramsLoadingSkeletons';
 import { useGetVramsVehicleQuery, useUpdateVramsVehicleMutation } from '../../VramsApi';
 import { notifyRtk } from '../../utils/vramsNotify';
+import { vehiclePlateNumber, vehicleMake, vehicleModel } from '../../utils/erdView';
 
 type FormValues = {
   plate: string;
   make: string;
   model: string;
-  color?: string;
   status: 'available' | 'in_service' | 'out_of_service';
   bookable: boolean;
   notes?: string;
@@ -29,7 +29,6 @@ export default function VehicleEditPage() {
       plate: '',
       make: '',
       model: '',
-      color: '',
       status: 'available',
       bookable: true,
       notes: ''
@@ -39,10 +38,9 @@ export default function VehicleEditPage() {
   useEffect(() => {
     if (!vehicle) return;
     reset({
-      plate: vehicle.plate,
-      make: vehicle.make,
-      model: vehicle.model,
-      color: vehicle.color ?? '',
+      plate: vehiclePlateNumber(vehicle),
+      make: vehicleMake(vehicle),
+      model: vehicleModel(vehicle),
       status: vehicle.status === 'dispatched' ? 'in_service' : vehicle.status,
       bookable: vehicle.bookable,
       notes: vehicle.notes ?? ''
@@ -74,10 +72,10 @@ export default function VehicleEditPage() {
 
   return (
     <VramsPage className="space-y-6">
-      <VramsHeader title={`Edit Vehicle ${vehicle.plate}`} subtitle="Update vehicle details and assignment readiness." />
+      <VramsHeader title={`Edit Vehicle ${vehiclePlateNumber(vehicle)}`} subtitle="Update vehicle details and assignment readiness." />
       <VramsCard className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Controller name="plate" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Plate" />} />
+          <Controller name="plate" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Plate number" />} />
           <Controller name="status" control={control} render={({ field }) => (
             <select {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
               <option value="available">Available</option>
@@ -87,11 +85,10 @@ export default function VehicleEditPage() {
           )} />
           <Controller name="make" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Make" />} />
           <Controller name="model" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Model" />} />
-          <Controller name="color" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Color" />} />
           <Controller name="bookable" control={control} render={({ field }) => (
             <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
               <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-              Bookable by staff
+              Bookable (is_bookable)
             </label>
           )} />
           <div className="md:col-span-2">

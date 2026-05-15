@@ -6,7 +6,6 @@ import { useCreateVramsRequestMutation } from '../VramsApi';
 import { notifyRtk } from '../utils/vramsNotify';
 
 const schema = z.object({
-	requester_name: z.string().min(2, 'Required'),
 	destination: z.string().min(3, 'Required'),
 	purpose: z.string().optional(),
 	booking_type: z.enum(['fixed', 'flexible']),
@@ -63,7 +62,15 @@ function NewRequestPanel({ onClose }: Props) {
 
 	async function onSubmit(values: FormValues) {
 		try {
-			await createRequest(values).unwrap();
+			await createRequest({
+				destination: values.destination,
+				purpose: values.purpose,
+				booking_type: values.booking_type,
+				departure_at: values.departure_at,
+				return_at: values.return_at || undefined,
+				priority: values.priority,
+				passenger_count: values.passenger_count
+			}).unwrap();
 			enqueueSnackbar('Request submitted successfully', { variant: 'success' });
 			onClose();
 		} catch (err) {
@@ -94,44 +101,9 @@ function NewRequestPanel({ onClose }: Props) {
 
 			{/* Form body */}
 			<form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-				{/* Requester */}
+				{/* Destination (destination_text) */}
 				<Field
-					label="Requester"
-					required
-					error={errors.requester_name?.message}
-				>
-					<Controller
-						name="requester_name"
-						control={control}
-						render={({ field }) => (
-							<div className="relative">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									strokeWidth={1.5}
-									stroke="currentColor"
-									className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-									/>
-								</svg>
-								<input
-									{...field}
-									className={`${inputCls} pl-9`}
-									placeholder="Full name or employee ID"
-								/>
-							</div>
-						)}
-					/>
-				</Field>
-
-				{/* Destination */}
-				<Field
-					label="Destination"
+					label="Destination text"
 					required
 					error={errors.destination?.message}
 				>
@@ -169,8 +141,8 @@ function NewRequestPanel({ onClose }: Props) {
 					/>
 				</Field>
 
-				{/* Purpose */}
-				<Field label="Purpose / Notes">
+				{/* Reason */}
+				<Field label="Reason">
 					<Controller
 						name="purpose"
 						control={control}
@@ -185,8 +157,8 @@ function NewRequestPanel({ onClose }: Props) {
 					/>
 				</Field>
 
-				{/* Booking Type */}
-				<Field label="Booking Type">
+				{/* Booking type → is_flexible_bool via API */}
+				<Field label="Schedule (fixed / flexible)">
 					<Controller
 						name="booking_type"
 						control={control}
@@ -214,7 +186,7 @@ function NewRequestPanel({ onClose }: Props) {
 				{/* Dates side by side */}
 				<div className="grid grid-cols-2 gap-3">
 					<Field
-						label="Departure Date & Time"
+						label="Start time"
 						required
 						error={errors.departure_at?.message}
 					>
@@ -230,7 +202,7 @@ function NewRequestPanel({ onClose }: Props) {
 							)}
 						/>
 					</Field>
-					<Field label="Return Date & Time">
+					<Field label="End time">
 						<Controller
 							name="return_at"
 							control={control}
@@ -245,8 +217,8 @@ function NewRequestPanel({ onClose }: Props) {
 					</Field>
 				</div>
 
-				{/* Priority */}
-				<Field label="Priority">
+				{/* Priority level */}
+				<Field label="Priority level">
 					<Controller
 						name="priority"
 						control={control}
@@ -275,9 +247,9 @@ function NewRequestPanel({ onClose }: Props) {
 					/>
 				</Field>
 
-				{/* Passengers */}
+				{/* Number of people */}
 				<Field
-					label="Number of Passengers"
+					label="Number of people"
 					error={errors.passenger_count?.message}
 				>
 					<Controller

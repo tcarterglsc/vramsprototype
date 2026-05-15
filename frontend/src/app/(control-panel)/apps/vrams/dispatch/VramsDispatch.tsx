@@ -16,6 +16,18 @@ import type { VramsRequest, Dispatch } from '../types';
 import { VramsCard, VramsHeader, VramsPage } from '../components/VramsUi';
 import { VramsTableBodySkeleton } from '../components/VramsLoadingSkeletons';
 import { notifyRtk } from '../utils/vramsNotify';
+import {
+	requestRef,
+	requestDestinationText,
+	requestStartTime,
+	vehiclePlateNumber,
+	vehicleMake,
+	vehicleModel,
+	userDisplayName,
+	bookingStatusKey,
+	bookingDispatchedAt,
+	bookingReturnedAt
+} from '../utils/erdView';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, string> = {
@@ -39,6 +51,11 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 	const [vehicleId, setVehicleId] = useState('');
 	const [driverId, setDriverId] = useState('');
 	const [dispatched, setDispatched] = useState(false);
+	
+	const ref = requestRef(request);
+	const requesterName = request.requester ? userDisplayName(request.requester) : 'Unknown';
+	const destination = requestDestinationText(request);
+	const startTime = requestStartTime(request);
 
 	async function handleDispatch() {
 		if (!vehicleId || !driverId) {
@@ -52,7 +69,7 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 				driver_id: Number(driverId)
 			}).unwrap();
 			setDispatched(true);
-			enqueueSnackbar(`${request.ref} dispatched!`, { variant: 'success' });
+			enqueueSnackbar(`${ref} dispatched!`, { variant: 'success' });
 		} catch (err) {
 			notifyRtk(enqueueSnackbar, err, 'Dispatch failed');
 		}
@@ -61,13 +78,13 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 	return (
 		<tr className={`border-b border-gray-100 ${dispatched ? 'opacity-40' : 'hover:bg-gray-50'}`}>
 			<td className="px-6 py-5">
-				<p className="text-base font-bold text-blue-600">{request.ref}</p>
-				<p className="text-sm text-gray-600 mt-0.5">{request.requester?.name}</p>
-				<p className="text-sm text-gray-400 mt-0.5">📍 HQ → {request.destination}</p>
+				<p className="text-base font-bold text-blue-600">{ref}</p>
+				<p className="text-sm text-gray-600 mt-0.5">{requesterName}</p>
+				<p className="text-sm text-gray-400 mt-0.5">📍 HQ → {destination}</p>
 			</td>
 			<td className="px-6 py-5">
 				<p className="text-base font-semibold text-gray-800">
-					{new Date(request.departure_at).toLocaleDateString('en-GB', {
+					{new Date(startTime).toLocaleDateString('en-GB', {
 						weekday: 'short',
 						day: 'numeric',
 						month: 'short',
@@ -76,7 +93,7 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 				</p>
 				<p className="text-sm text-gray-400 flex items-center gap-1 mt-1">
 					🕗{' '}
-					{new Date(request.departure_at).toLocaleTimeString([], {
+					{new Date(startTime).toLocaleTimeString([], {
 						hour: '2-digit',
 						minute: '2-digit'
 					})}
@@ -94,7 +111,7 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 					<MenuItem value="">— Select —</MenuItem>
 					{(vehiclesPage?.items ?? []).map((v) => (
 						<MenuItem key={v.id} value={v.id}>
-							{v.plate} — {v.make} {v.model}
+							{vehiclePlateNumber(v)} — {vehicleMake(v)} {vehicleModel(v)}
 						</MenuItem>
 					))}
 				</TextField>
@@ -111,7 +128,7 @@ function AssignmentRow({ request }: { request: VramsRequest }) {
 					<MenuItem value="">— Select —</MenuItem>
 					{(drivers ?? []).map((d) => (
 						<MenuItem key={d.id} value={d.id}>
-							{d.name} — {d.driver_id_code}
+							{userDisplayName(d)} — {d.driver_id_code}
 						</MenuItem>
 					))}
 				</TextField>
@@ -147,11 +164,21 @@ function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 	const [editingAssignment, setEditingAssignment] = useState(false);
 	const [vehicleId, setVehicleId] = useState('');
 	const [driverId, setDriverId] = useState('');
+	
+	const ref = d.request ? requestRef(d.request) : '—';
+	const destination = d.request ? requestDestinationText(d.request) : '—';
+	const vehiclePlate = d.vehicle ? vehiclePlateNumber(d.vehicle) : '—';
+	const vehicleMakeModel = d.vehicle ? `${vehicleMake(d.vehicle)} ${vehicleModel(d.vehicle)}` : '';
+	const driverName = d.driver ? userDisplayName(d.driver) : '—';
+	const driverCode = d.driver?.driver_id_code ?? '';
+	const dispatchedAt = bookingDispatchedAt(d);
+	const returnedAt = bookingReturnedAt(d);
+	const status = bookingStatusKey(d);
 
-	async function handle(status: string) {
+	async function handle(newStatus: string) {
 		try {
-			await updateStatus({ id: d.id, status }).unwrap();
-			enqueueSnackbar(`Status updated to ${status}`, { variant: 'success' });
+			await updateStatus({ id: d.id, status: newStatus }).unwrap();
+			enqueueSnackbar(`Status updated to ${newStatus}`, { variant: 'success' });
 		} catch (err) {
 			notifyRtk(enqueueSnackbar, err, 'Update failed');
 		}
@@ -175,8 +202,8 @@ function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 	return (
 		<tr className="border-b border-gray-100 hover:bg-gray-50">
 			<td className="px-6 py-5">
-				<p className="text-base font-bold text-blue-600">{d.request?.ref}</p>
-				<p className="text-sm text-gray-400 mt-0.5">📍 HQ → {d.request?.destination}</p>
+				<p className="text-base font-bold text-blue-600">{ref}</p>
+				<p className="text-sm text-gray-400 mt-0.5">📍 HQ → {destination}</p>
 			</td>
 			<td className="px-6 py-5">
 				{editingAssignment ? (
@@ -190,17 +217,17 @@ function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 						<MenuItem value="">— Select —</MenuItem>
 						{(vehiclesPage?.items ?? []).map((v) => (
 							<MenuItem key={v.id} value={v.id}>
-								{v.plate} — {v.make} {v.model}
+								{vehiclePlateNumber(v)} — {vehicleMake(v)} {vehicleModel(v)}
 							</MenuItem>
 						))}
 					</TextField>
 				) : (
 					<>
 						<span className="bg-gray-100 rounded-lg px-3 py-1.5 font-mono text-sm font-bold text-gray-800">
-							🚗 {d.vehicle?.plate}
+							🚗 {vehiclePlate}
 						</span>
 						<p className="text-sm text-gray-500 mt-1.5">
-							{d.vehicle?.make} {d.vehicle?.model}
+							{vehicleMakeModel}
 						</p>
 					</>
 				)}
@@ -217,36 +244,36 @@ function DispatchRow({ dispatch: d }: { dispatch: Dispatch }) {
 						<MenuItem value="">— Select —</MenuItem>
 						{drivers.map((drv) => (
 							<MenuItem key={drv.id} value={drv.id}>
-								{drv.name} — {drv.driver_id_code}
+								{userDisplayName(drv)} — {drv.driver_id_code}
 							</MenuItem>
 						))}
 					</TextField>
 				) : (
 					<div className="flex items-center gap-3">
 						<Avatar sx={{ width: 36, height: 36, bgcolor: '#1e40af', fontSize: 13, fontWeight: 700 }}>
-							{d.driver?.name?.slice(0, 2)}
+							{driverName?.slice(0, 2)}
 						</Avatar>
 						<div>
-							<p className="text-base font-semibold text-gray-800">{d.driver?.name}</p>
-							<p className="text-sm text-gray-400">{d.driver?.driver_id_code}</p>
+							<p className="text-base font-semibold text-gray-800">{driverName}</p>
+							<p className="text-sm text-gray-400">{driverCode}</p>
 						</div>
 					</div>
 				)}
 			</td>
 			<td className="px-6 py-5">
 				<p className="text-base font-semibold text-gray-800">
-					{d.dispatched_at
-						? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+					{dispatchedAt
+						? new Date(dispatchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 						: '—'}
 				</p>
-				{d.returned_at && (
+				{returnedAt && (
 					<p className="text-sm text-green-600 mt-0.5">
-						Returned {new Date(d.returned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+						Returned {new Date(returnedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 					</p>
 				)}
 			</td>
 			<td className="px-6 py-5">
-				<StatusBadge status={d.status} />
+				<StatusBadge status={status} />
 			</td>
 			<td className="px-6 py-5 relative">
 				{editingAssignment ? (

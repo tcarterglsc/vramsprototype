@@ -4,6 +4,7 @@ import { useSnackbar } from 'notistack';
 import { useGetVramsRequestQuery, useUpdateVramsRequestMutation } from '../VramsApi';
 import { VramsSidePanelSkeleton } from '../components/VramsLoadingSkeletons';
 import { notifyRtk } from '../utils/vramsNotify';
+import { userDisplayName } from '../utils/erdView';
 
 type Props = { requestId: number; onClose: () => void };
 
@@ -89,22 +90,22 @@ export default function EditRequestPanel({ requestId, onClose }: Props) {
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Requester</label>
-          <input value={request.requester?.name ?? ''} disabled className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-100 text-gray-500" />
+          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Requesting user</label>
+          <input value={request.requester ? userDisplayName(request.requester) : ''} disabled className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-100 text-gray-500" />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Destination <span className="text-red-500">*</span></label>
+          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Destination text <span className="text-red-500">*</span></label>
           <Controller name="destination" control={control} render={({ field }) => <input {...field} className={inputCls} placeholder="Enter destination address" />} />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Purpose / Notes</label>
+          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Reason</label>
           <Controller name="purpose" control={control} render={({ field }) => <textarea {...field} rows={3} className={`${inputCls} resize-none`} placeholder="Describe the purpose of this trip..." />} />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Booking Type</label>
+          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Schedule (fixed / flexible)</label>
           <Controller
             name="booking_type"
             control={control}
@@ -122,17 +123,17 @@ export default function EditRequestPanel({ requestId, onClose }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Departure Date & Time <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Start time <span className="text-red-500">*</span></label>
             <Controller name="departure_at" control={control} render={({ field }) => <input {...field} type="datetime-local" className={inputCls} />} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Return Date & Time</label>
+            <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">End time</label>
             <Controller name="return_at" control={control} render={({ field }) => <input {...field} type="datetime-local" className={inputCls} />} />
           </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Priority</label>
+          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Priority level</label>
           <Controller
             name="priority"
             control={control}
@@ -153,7 +154,7 @@ export default function EditRequestPanel({ requestId, onClose }: Props) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Number Of Passengers</label>
+          <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Number of people</label>
           <Controller name="passenger_count" control={control} render={({ field }) => <input {...field} type="number" min={1} className={inputCls} />} />
         </div>
       </form>

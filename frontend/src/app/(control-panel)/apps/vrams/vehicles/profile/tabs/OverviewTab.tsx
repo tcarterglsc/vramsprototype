@@ -2,6 +2,19 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Avatar from '@mui/material/Avatar';
 import { API_BASE_URL } from '@/utils/apiFetch';
 import type { Vehicle } from '../../../types';
+import {
+	vehicleMake,
+	vehicleModel,
+	vehicleYear,
+	vehicleTypeLabel,
+	vehicleFitnessExpiryDate,
+	vehicleInsuranceExpiryDate,
+	vehicleNextServiceDate,
+	vehicleOdometerKm,
+	userDisplayName,
+	driverLicenceNumber,
+	documentFileName
+} from '../../../utils/erdView';
 
 type Props = {
 	vehicle: Vehicle;
@@ -42,6 +55,15 @@ function SpecRow({ label, value }: { label: string; value?: string | number }) {
 }
 
 function OverviewTab({ vehicle, onChangeStatus, onLogService, onUploadDocuments }: Props) {
+	const fitnessExpiry = vehicleFitnessExpiryDate(vehicle);
+	const insuranceExpiry = vehicleInsuranceExpiryDate(vehicle);
+	const nextService = vehicleNextServiceDate(vehicle);
+	const make = vehicleMake(vehicle);
+	const model = vehicleModel(vehicle);
+	const year = vehicleYear(vehicle);
+	const vehicleType = vehicleTypeLabel(vehicle);
+	const odometerKm = vehicleOdometerKm(vehicle);
+
 	return (
 		<div className="space-y-6">
 
@@ -49,9 +71,9 @@ function OverviewTab({ vehicle, onChangeStatus, onLogService, onUploadDocuments 
 			<div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
 				<p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">🛡 Compliance & Validity</p>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-					<ComplianceCard label="Fitness Certificate" date={vehicle.fitness_expiry} icon="📋" />
-					<ComplianceCard label="Insurance Expiry" date={vehicle.insurance_expiry} icon="🛡" />
-					<ComplianceCard label="Next Service Date" date={vehicle.next_service_date} icon="🔧" />
+					<ComplianceCard label="Fitness Certificate" date={fitnessExpiry} icon="📋" />
+					<ComplianceCard label="Insurance Expiry" date={insuranceExpiry} icon="🛡" />
+					<ComplianceCard label="Next Service Date" date={nextService} icon="🔧" />
 				</div>
 			</div>
 
@@ -59,15 +81,10 @@ function OverviewTab({ vehicle, onChangeStatus, onLogService, onUploadDocuments 
 			<div className="bg-white rounded-xl border border-gray-200 p-5">
 				<p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">🚗 Vehicle Specifications</p>
 				<div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8">
-					<SpecRow label="Make / Model" value={`${vehicle.make} ${vehicle.model}`} />
-					<SpecRow label="Year" value={vehicle.year} />
-					<SpecRow label="Type" value={vehicle.vehicle_type} />
-					<SpecRow label="Engine" value={vehicle.engine_size} />
-					<SpecRow label="Fuel Type" value={vehicle.fuel_type} />
-					<SpecRow label="Transmission" value={vehicle.transmission} />
-					<SpecRow label="Seating Capacity" value={vehicle.seating_capacity ? `${vehicle.seating_capacity} seats` : undefined} />
-					<SpecRow label="Odometer" value={vehicle.odometer_km ? `${vehicle.odometer_km.toLocaleString()} km` : undefined} />
-					<SpecRow label="Colour" value={vehicle.color} />
+					<SpecRow label="Make / Model" value={`${make} ${model}`} />
+					<SpecRow label="Year" value={year} />
+					<SpecRow label="Type" value={vehicleType} />
+					<SpecRow label="Odometer" value={odometerKm ? `${odometerKm.toLocaleString()} km` : undefined} />
 				</div>
 			</div>
 
@@ -87,24 +104,27 @@ function OverviewTab({ vehicle, onChangeStatus, onLogService, onUploadDocuments 
 					<p className="text-sm text-gray-400 italic">No documents uploaded for this vehicle yet.</p>
 				) : (
 					<div className="space-y-2">
-						{vehicle.documents?.map((doc) => (
-							<div key={doc.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-								<div className="min-w-0">
-									<p className="text-sm font-semibold text-gray-800 truncate">{doc.file_name || 'Document'}</p>
-									<p className="text-xs text-gray-500">{doc.doc_type.replace('_', ' ')}</p>
+						{vehicle.documents?.map((doc) => {
+							const fileName = documentFileName(doc);
+							return (
+								<div key={doc.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+									<div className="min-w-0">
+										<p className="text-sm font-semibold text-gray-800 truncate">{fileName || 'Document'}</p>
+										<p className="text-xs text-gray-500">{doc.doc_type.replace('_', ' ')}</p>
+									</div>
+									{doc.file_url ? (
+										<a
+											href={doc.file_url.startsWith('http') ? doc.file_url : `${API_BASE_URL}${doc.file_url}`}
+											target="_blank"
+											rel="noreferrer"
+											className="text-sm font-semibold text-blue-600 hover:underline"
+										>
+											Open
+										</a>
+									) : null}
 								</div>
-								{doc.file_url ? (
-									<a
-										href={doc.file_url.startsWith('http') ? doc.file_url : `${API_BASE_URL}${doc.file_url}`}
-										target="_blank"
-										rel="noreferrer"
-										className="text-sm font-semibold text-blue-600 hover:underline"
-									>
-										Open
-									</a>
-								) : null}
-							</div>
-						))}
+							);
+						})}
 					</div>
 				)}
 			</div>
@@ -119,17 +139,17 @@ function OverviewTab({ vehicle, onChangeStatus, onLogService, onUploadDocuments 
 						<>
 							<div className="flex items-center gap-3 mb-4">
 								<Avatar sx={{ bgcolor: '#1e40af', width: 44, height: 44, fontSize: 14, fontWeight: 700 }}>
-									{vehicle.default_driver.avatar_initials ?? vehicle.default_driver.name.slice(0, 2).toUpperCase()}
+									{vehicle.default_driver.avatar_initials ?? userDisplayName(vehicle.default_driver).slice(0, 2).toUpperCase()}
 								</Avatar>
 								<div>
-									<p className="text-sm font-bold text-gray-900">{vehicle.default_driver.name}</p>
+									<p className="text-sm font-bold text-gray-900">{userDisplayName(vehicle.default_driver)}</p>
 									<p className="text-xs text-gray-400">{vehicle.default_driver.driver_id_code} · Active</p>
 								</div>
 							</div>
 							<div className="space-y-2 border-t border-gray-100 pt-3">
 								<div className="flex justify-between text-sm">
 									<span className="text-gray-400">License</span>
-									<span className="font-medium">{vehicle.default_driver.license_number ?? '—'}</span>
+									<span className="font-medium">{driverLicenceNumber(vehicle.default_driver) ?? '—'}</span>
 								</div>
 								<div className="flex justify-between text-sm">
 									<span className="text-gray-400">Total Trips</span>

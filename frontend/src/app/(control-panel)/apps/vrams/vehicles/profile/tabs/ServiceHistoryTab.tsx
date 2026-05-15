@@ -6,29 +6,44 @@ import Chip from '@mui/material/Chip';
 import { VramsDataTablePanelSkeleton } from '../../../components/VramsLoadingSkeletons';
 import { useGetVramsVehicleMaintenanceQuery } from '../../../VramsApi';
 import type { MaintenanceLog } from '../../../types';
+import {
+	serviceTypeLabel,
+	serviceDate,
+	serviceTechnician,
+	serviceCost,
+	serviceNextDate
+} from '../../../utils/erdView';
 
 function ServiceHistoryTab({ vehicleId }: { vehicleId: number }) {
 	const { data: logs, isLoading } = useGetVramsVehicleMaintenanceQuery(vehicleId);
 
 	const columns = useMemo<MRT_ColumnDef<MaintenanceLog>[]>(
 		() => [
-			{ accessorKey: 'service_type', header: 'Service Type' },
+			{
+				accessorKey: 'service_type',
+				header: 'Service Type',
+				Cell: ({ row }) => serviceTypeLabel(row.original)
+			},
 			{
 				accessorKey: 'date_performed',
 				header: 'Date',
-				Cell: ({ cell }) => new Date(cell.getValue<string>()).toLocaleDateString()
+				Cell: ({ row }) => new Date(serviceDate(row.original)).toLocaleDateString()
 			},
-			{ accessorKey: 'technician', header: 'Technician' },
+			{
+				accessorKey: 'technician',
+				header: 'Technician',
+				Cell: ({ row }) => serviceTechnician(row.original)
+			},
 			{
 				accessorKey: 'cost_kes',
 				header: 'Cost (KES)',
-				Cell: ({ cell }) => cell.getValue<number>()?.toLocaleString() ?? '—'
+				Cell: ({ row }) => serviceCost(row.original)?.toLocaleString() ?? '—'
 			},
 			{
 				accessorKey: 'next_due_date',
 				header: 'Next Due',
-				Cell: ({ cell }) => {
-					const v = cell.getValue<string>();
+				Cell: ({ row }) => {
+					const v = serviceNextDate(row.original);
 					if (!v) return '—';
 					const days = Math.ceil((new Date(v).getTime() - Date.now()) / 86400000);
 					return (

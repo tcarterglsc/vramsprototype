@@ -19,15 +19,34 @@ def create_app(config_name: str = None) -> Flask:
     bcrypt.init_app(app)
     CORS(app, origins="*", supports_credentials=False)
 
+    # OpenAPI / Flask-Smorest (nglms-style)
+    app.config.setdefault("API_TITLE", "VRAMs API")
+    app.config.setdefault("API_VERSION", "1.0.0")
+    app.config.setdefault("OPENAPI_VERSION", "3.0.3")
+    app.config.setdefault("OPENAPI_URL_PREFIX", "/")
+    app.config.setdefault("OPENAPI_JSON_PATH", "openapi.json")
+    app.config.setdefault("OPENAPI_SWAGGER_UI_PATH", "/swagger-ui")
+    app.config.setdefault(
+        "OPENAPI_SWAGGER_UI_URL",
+        "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/",
+    )
+    spec = app.config.setdefault("API_SPEC_OPTIONS", {})
+    components = spec.setdefault("components", {})
+    security_schemes = components.setdefault("securitySchemes", {})
+    security_schemes.setdefault(
+        "BearerAuth",
+        {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"},
+    )
+
+    from flask_smorest import Api
+
+    api = Api(app)
+    from .controllers import register_vrams_api
+
+    register_vrams_api(api)
+
     # Ensure upload folder exists
     os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)
-
-    # Register blueprints
-    from .controllers.auth_controller import auth_bp
-    from .controllers.vrams_controller import vrams_bp
-
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(vrams_bp, url_prefix="/api/vrams")
 
     # Create any missing tables (e.g. after adding models) without wiping data.
     # For SQLite schema changes to existing tables, use migrations or re-seed.

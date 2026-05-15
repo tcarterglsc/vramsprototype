@@ -13,6 +13,17 @@ import type { Vehicle } from '../types';
 import VehicleIllustration from '../components/VehicleIllustration';
 import { VramsCard, VramsHeader, VramsMetricStrip, VramsPage } from '../components/VramsUi';
 import { VramsVehicleCardGridSkeleton } from '../components/VramsLoadingSkeletons';
+import {
+	vehiclePlateNumber,
+	vehicleStatusKey,
+	vehicleTypeLabel,
+	vehicleMake,
+	vehicleModel,
+	vehicleFitnessExpiryDate,
+	vehicleInsuranceExpiryDate,
+	vehicleNextServiceDate,
+	vehicleIsBookable
+} from '../utils/erdView';
 
 function StatusBadge({ status }: { status: string }) {
 	const map: Record<string, { label: string; cls: string }> = {
@@ -60,6 +71,17 @@ function VehicleCard({ vehicle, onDelete }: { vehicle: Vehicle; onDelete: (vehic
 			? rawPhotoUrl
 			: `${API_BASE_URL}${rawPhotoUrl}`
 		: '';
+	
+	const plateNumber = vehiclePlateNumber(vehicle);
+	const make = vehicleMake(vehicle);
+	const model = vehicleModel(vehicle);
+	const vehicleType = vehicleTypeLabel(vehicle);
+	const status = vehicleStatusKey(vehicle);
+	const fitnessExpiry = vehicleFitnessExpiryDate(vehicle);
+	const insuranceExpiry = vehicleInsuranceExpiryDate(vehicle);
+	const nextService = vehicleNextServiceDate(vehicle);
+	const isBookable = vehicleIsBookable(vehicle);
+
 	return (
 		<div
 			className="bg-white rounded-2xl border border-gray-200 p-5 cursor-pointer hover:shadow-md transition-shadow flex flex-col gap-4"
@@ -68,32 +90,28 @@ function VehicleCard({ vehicle, onDelete }: { vehicle: Vehicle; onDelete: (vehic
 			{/* Vehicle illustration */}
 			<div className="rounded-xl overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-3 py-3 min-h-[150px]">
 				{photoUrl ? (
-					<img src={photoUrl} alt={`${vehicle.plate} vehicle`} className="w-full h-32 object-cover rounded-lg" />
+					<img src={photoUrl} alt={`${plateNumber} vehicle`} className="w-full h-32 object-cover rounded-lg" />
 				) : (
-					<VehicleIllustration
-						vehicleType={vehicle.vehicle_type}
-						color={vehicle.color}
-						style={{ width: '100%', maxHeight: 120 }}
-					/>
+					<VehicleIllustration vehicleType={vehicleType} style={{ width: '100%', maxHeight: 120 }} />
 				)}
 			</div>
 
 			<div className="flex items-start justify-between">
 				<div>
-					<p className="text-xl font-bold font-mono text-gray-900">{vehicle.plate}</p>
-					<p className="text-sm text-gray-500 mt-0.5">{vehicle.make} {vehicle.model} · {vehicle.vehicle_type}</p>
+					<p className="text-xl font-bold font-mono text-gray-900">{plateNumber}</p>
+					<p className="text-sm text-gray-500 mt-0.5">{make} {model} · {vehicleType}</p>
 				</div>
-				<StatusBadge status={vehicle.status} />
+				<StatusBadge status={status} />
 			</div>
 
 			<div className="border-t border-gray-100 pt-3 space-y-0.5">
-				<ComplianceRow label="Fitness Certificate" date={vehicle.fitness_expiry} />
-				<ComplianceRow label="Insurance Expiry" date={vehicle.insurance_expiry} />
-				<ComplianceRow label="Next Service" date={vehicle.next_service_date} />
+				<ComplianceRow label="Fitness Certificate" date={fitnessExpiry} />
+				<ComplianceRow label="Insurance Expiry" date={insuranceExpiry} />
+				<ComplianceRow label="Next Service" date={nextService} />
 				<div className="flex items-center justify-between py-1.5">
 					<span className="text-sm text-gray-500">Bookable</span>
-					<span className={`text-sm font-bold ${vehicle.bookable ? 'text-green-600' : 'text-red-500'}`}>
-						{vehicle.bookable ? '✓ Yes' : '✕ No'}
+					<span className={`text-sm font-bold ${isBookable ? 'text-green-600' : 'text-red-500'}`}>
+						{isBookable ? '✓ Yes' : '✕ No'}
 					</span>
 				</div>
 			</div>
@@ -145,9 +163,9 @@ function VramsVehicles() {
 
 	const vehicles = page?.items ?? [];
 	const total = page?.total ?? 0;
-	const available = vehicles.filter((v) => v.status === 'available').length;
-	const inService = vehicles.filter((v) => v.status === 'in_service').length;
-	const outOfService = vehicles.filter((v) => v.status === 'out_of_service').length;
+	const available = vehicles.filter((v) => vehicleStatusKey(v) === 'available').length;
+	const inService = vehicles.filter((v) => vehicleStatusKey(v) === 'in_service').length;
+	const outOfService = vehicles.filter((v) => vehicleStatusKey(v) === 'out_of_service').length;
 
 	async function handleDeleteVehicle(vehicle: Vehicle) {
 		setVehicleToDelete(vehicle);

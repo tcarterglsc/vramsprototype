@@ -1,3 +1,16 @@
+export type {
+	ErdAuditLog,
+	ErdBooking,
+	ErdDocumentAggregate,
+	ErdDriver,
+	ErdNextGenUser,
+	ErdRequest,
+	ErdServiceLog,
+	ErdUserAggregate,
+	ErdVehicle,
+	ErdVehicleStatusLog
+} from './erd';
+
 export type RequestStatus = 'pending' | 'approved' | 'dispatched' | 'rejected' | 'completed' | 'cancelled';
 export type RequestPriority = 'normal' | 'high' | 'urgent';
 export type BookingType = 'fixed' | 'flexible';
@@ -31,6 +44,8 @@ export type VramsUser = {
 	total_trips?: number;
 	created_at: string;
 	version?: number;
+	/** Fleet ERD overlay (NextGenUser + optional Driver) */
+	erd?: import('./erd').ErdUserAggregate;
 };
 
 export type VramsOrganizationSettings = {
@@ -55,6 +70,7 @@ export type VehicleDocument = {
 	file_name?: string;
 	expires_at?: string;
 	uploaded_at: string;
+	erd?: import('./erd').ErdDocumentAggregate;
 };
 
 /** Row from GET /api/vrams/documents (includes vehicle summary). */
@@ -86,6 +102,7 @@ export type Vehicle = {
 	documents?: VehicleDocument[];
 	created_at: string;
 	updated_at: string;
+	erd?: import('./erd').ErdVehicle;
 };
 
 export type VramsRequest = {
@@ -107,6 +124,7 @@ export type VramsRequest = {
 	approved_at?: string;
 	created_at: string;
 	updated_at: string;
+	erd?: import('./erd').ErdRequest;
 };
 
 export type MaintenanceLog = {
@@ -124,6 +142,7 @@ export type MaintenanceLog = {
 	receipt_url?: string;
 	logged_by?: VramsUser;
 	created_at: string;
+	erd?: import('./erd').ErdServiceLog;
 };
 
 export type Dispatch = {
@@ -139,6 +158,8 @@ export type Dispatch = {
 	status: DispatchStatus;
 	delay_reason?: string;
 	created_at: string;
+	/** Fleet ERD: Booking */
+	erd?: import('./erd').ErdBooking;
 };
 
 export type DashboardStats = {
@@ -158,6 +179,7 @@ export type StatusLog = {
 	to_status: VehicleStatus;
 	reason?: string;
 	changed_at: string;
+	erd?: import('./erd').ErdVehicleStatusLog;
 };
 
 export type PaginatedResponse<T> = {
@@ -202,4 +224,5 @@ export type AuditLogItem = {
 	actor_role?: string;
 	details?: Record<string, unknown>;
 	created_at: string;
+	erd?: import('./erd').ErdAuditLog;
 };

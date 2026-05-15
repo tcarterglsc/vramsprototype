@@ -6,6 +6,7 @@ import { VramsPage } from '../components/VramsUi';
 import { VramsFormPageSkeleton } from '../components/VramsLoadingSkeletons';
 import { useGetVramsRequestQuery, useUpdateVramsRequestMutation } from '../VramsApi';
 import { notifyRtk } from '../utils/vramsNotify';
+import { userDisplayName } from '../utils/erdView';
 
 type FormValues = {
   destination: string;
@@ -99,9 +100,9 @@ export default function RequestEditPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-4 space-y-4 min-h-[700px]">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Requester</label>
+            <label className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Requesting user</label>
             <input
-              value={request.requester?.name ?? ''}
+              value={request.requester ? userDisplayName(request.requester) : ''}
               disabled
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-100 text-gray-500"
             />

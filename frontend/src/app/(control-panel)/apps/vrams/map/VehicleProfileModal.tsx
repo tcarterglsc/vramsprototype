@@ -4,6 +4,19 @@ import { useSnackbar } from "notistack";
 import type { Vehicle, Dispatch, VramsRequest, VramsUser } from "../types/index";
 import VehicleIllustration from "../components/VehicleIllustration";
 import {
+  vehiclePlateNumber,
+  vehicleMake,
+  vehicleModel,
+  vehicleTypeLabel,
+  vehicleFitnessExpiryDate,
+  vehicleInsuranceExpiryDate,
+  vehicleNextServiceDate,
+  vehicleOdometerKm,
+  vehicleStatusKey,
+  vehicleIsBookable,
+  vehicleVin,
+} from "../utils/erdView";
+import {
   useGetVramsDispatchPendingQuery,
   useGetVramsDriversQuery,
   useAssignVramsDispatchMutation,
@@ -64,6 +77,9 @@ function QuickDispatchPanel({
   onBack: () => void;
   onDone: () => void;
 }) {
+  const plate = vehiclePlateNumber(vehicle);
+  const make = vehicleMake(vehicle);
+  const model = vehicleModel(vehicle);
   const { data: pendingRequests = [] } = useGetVramsDispatchPendingQuery();
   const { data: drivers          = [] } = useGetVramsDriversQuery();
   const [assignDispatch, { isLoading }] = useAssignVramsDispatchMutation();
@@ -117,7 +133,7 @@ function QuickDispatchPanel({
       }}>✓</div>
       <p style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 800, color: "#111827" }}>Dispatched!</p>
       <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>
-        {vehicle.plate} has been dispatched successfully.
+        {plate} has been dispatched successfully.
       </p>
     </div>
   );
@@ -145,7 +161,7 @@ function QuickDispatchPanel({
         <div>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#111827" }}>Quick Dispatch</p>
           <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
-            {vehicle.plate} · {vehicle.make} {vehicle.model}
+            {plate} · {make} {model}
           </p>
         </div>
       </div>
@@ -154,7 +170,6 @@ function QuickDispatchPanel({
       <div style={{ background: "#f8fafc", padding: "12px 24px 8px" }}>
         <VehicleIllustration
           vehicleType={vehicle.vehicle_type}
-          color={vehicle.color}
           style={{ width: "100%", maxHeight: 72 }}
         />
       </div>
@@ -298,8 +313,20 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
 
   if (!open || !vehicle) return null;
 
-  const statusColor = STATUS_COLOR[vehicle.status] ?? "#9ca3af";
-  const statusLabel = STATUS_LABEL[vehicle.status] ?? vehicle.status;
+  const plate = vehiclePlateNumber(vehicle);
+  const make = vehicleMake(vehicle);
+  const model = vehicleModel(vehicle);
+  const typeLabel = vehicleTypeLabel(vehicle);
+  const statusKey = vehicleStatusKey(vehicle);
+  const fitnessExpiry = vehicleFitnessExpiryDate(vehicle);
+  const insuranceExpiry = vehicleInsuranceExpiryDate(vehicle);
+  const nextService = vehicleNextServiceDate(vehicle);
+  const odometerKm = vehicleOdometerKm(vehicle);
+  const bookable = vehicleIsBookable(vehicle);
+  const vin = vehicleVin(vehicle);
+
+  const statusColor = STATUS_COLOR[statusKey] ?? "#9ca3af";
+  const statusLabel = STATUS_LABEL[statusKey] ?? statusKey;
 
   function handleClose() {
     setView("details");
@@ -379,7 +406,6 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
               <div style={{ marginBottom: 16 }}>
                 <VehicleIllustration
                   vehicleType={vehicle.vehicle_type}
-                  color={vehicle.color}
                   style={{ width: "100%", maxHeight: 100 }}
                 />
               </div>
@@ -387,7 +413,7 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
               {/* Plate + status */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 26, fontWeight: 900, fontFamily: "monospace", color: "#111827", letterSpacing: 2 }}>
-                  {vehicle.plate}
+                  {plate}
                 </span>
                 <span style={{
                   padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
@@ -395,7 +421,7 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
                 }}>
                   ● {statusLabel}
                 </span>
-                {vehicle.bookable && (
+                {bookable && (
                   <span style={{
                     padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
                     background: "#dbeafe", color: "#1d4ed8",
@@ -405,8 +431,8 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
                 )}
               </div>
               <p style={{ margin: "6px 0 0", fontSize: 14, color: "#6b7280" }}>
-                {vehicle.make} {vehicle.model} · {vehicle.vehicle_type}
-                {vehicle.vin ? ` · VIN: ${vehicle.vin}` : ""}
+                {make} {model} · {typeLabel}
+                {vin ? ` · VIN: ${vin}` : ""}
               </p>
             </div>
 
@@ -480,13 +506,10 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
                 <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Specifications
                 </p>
-                <SpecRow label="Year"             value={vehicle.year} />
-                <SpecRow label="Fuel Type"        value={vehicle.fuel_type} />
-                <SpecRow label="Transmission"     value={vehicle.transmission} />
-                <SpecRow label="Seating Capacity" value={vehicle.seating_capacity ? `${vehicle.seating_capacity} seats` : null} />
-                <SpecRow label="Engine"           value={vehicle.engine_size} />
-                <SpecRow label="Colour"           value={vehicle.color} />
-                <SpecRow label="Odometer"         value={vehicle.odometer_km ? `${vehicle.odometer_km.toLocaleString()} km` : null} />
+                <SpecRow label="Make / Model" value={`${make} ${model}`.trim() || null} />
+                <SpecRow label="Type" value={typeLabel} />
+                <SpecRow label="Year" value={vehicle.year} />
+                <SpecRow label="Odometer" value={odometerKm != null ? `${odometerKm.toLocaleString()} km` : null} />
               </div>
 
               {/* Compliance */}
@@ -494,9 +517,9 @@ export default function VehicleProfileModal({ open, onClose, vehicle, dispatch }
                 <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Compliance
                 </p>
-                <ComplianceRow label="Fitness Certificate" date={vehicle.fitness_expiry} />
-                <ComplianceRow label="Insurance"           date={vehicle.insurance_expiry} />
-                <ComplianceRow label="Next Service"        date={vehicle.next_service_date} />
+                <ComplianceRow label="Fitness Certificate" date={fitnessExpiry} />
+                <ComplianceRow label="Insurance"           date={insuranceExpiry} />
+                <ComplianceRow label="Next Service"        date={nextService} />
               </div>
 
               {/* Default driver */}

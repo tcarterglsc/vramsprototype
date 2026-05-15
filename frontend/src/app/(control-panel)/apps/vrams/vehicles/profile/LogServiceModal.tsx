@@ -25,6 +25,7 @@ export default function LogServiceModal({ vehicleId, open, onClose }: Props) {
 	const [technician, setTechnician] = useState('');
 	const [costKes, setCostKes] = useState('');
 	const [nextDueDate, setNextDueDate] = useState('');
+	const [mileageAtService, setMileageAtService] = useState('');
 	const [notes, setNotes] = useState('');
 
 	async function handleSave() {
@@ -40,6 +41,7 @@ export default function LogServiceModal({ vehicleId, open, onClose }: Props) {
 				date_performed: datePerformed,
 				technician: technician.trim(),
 				cost_kes: costKes ? Number(costKes) : undefined,
+				mileage_at_service: mileageAtService ? Number(mileageAtService) : undefined,
 				next_due_date: nextDueDate || undefined,
 				notes: notes || undefined
 			}).unwrap();
@@ -63,7 +65,7 @@ export default function LogServiceModal({ vehicleId, open, onClose }: Props) {
 				</TextField>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
 					<TextField
-						label="Date Performed"
+						label="Service date"
 						type="date"
 						value={datePerformed}
 						onChange={(e) => setDatePerformed(e.target.value)}
@@ -72,7 +74,7 @@ export default function LogServiceModal({ vehicleId, open, onClose }: Props) {
 						InputLabelProps={{ shrink: true }}
 					/>
 					<TextField
-						label="Next Due Date (optional)"
+						label="Next service date (optional)"
 						type="date"
 						value={nextDueDate}
 						onChange={(e) => setNextDueDate(e.target.value)}
@@ -82,18 +84,30 @@ export default function LogServiceModal({ vehicleId, open, onClose }: Props) {
 					/>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-					<TextField label="Technician" value={technician} onChange={(e) => setTechnician(e.target.value)} fullWidth size="small" />
+					<TextField label="Technician (extension)" value={technician} onChange={(e) => setTechnician(e.target.value)} fullWidth size="small" />
 					<TextField
-						label="Cost (KES)"
+						label="Mileage at service (extension · km)"
+						type="number"
+						value={mileageAtService}
+						onChange={(e) => setMileageAtService(e.target.value)}
+						fullWidth
+						size="small"
+						inputProps={{ min: 0 }}
+					/>
+				</div>
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+					<TextField
+						label="Cost"
 						type="number"
 						value={costKes}
 						onChange={(e) => setCostKes(e.target.value)}
 						fullWidth
 						size="small"
 						inputProps={{ min: 0 }}
+						helperText="KES"
 					/>
 				</div>
-				<TextField label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} fullWidth size="small" multiline rows={2} />
+				<TextField label="Description (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} fullWidth size="small" multiline rows={2} />
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={onClose}>Cancel</Button>

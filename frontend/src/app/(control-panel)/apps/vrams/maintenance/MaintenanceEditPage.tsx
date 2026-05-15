@@ -11,6 +11,7 @@ type FormValues = {
   service_type: string;
   date_performed: string;
   technician: string;
+  mileage_at_service?: number;
   cost_kes?: number;
   next_due_date?: string;
   notes?: string;
@@ -24,7 +25,15 @@ export default function MaintenanceEditPage() {
   const [updateMaintenance, { isLoading: saving }] = useUpdateVramsMaintenanceMutation();
 
   const { control, reset, handleSubmit } = useForm<FormValues>({
-    defaultValues: { service_type: '', date_performed: '', technician: '', cost_kes: undefined, next_due_date: '', notes: '' }
+    defaultValues: {
+      service_type: '',
+      date_performed: '',
+      technician: '',
+      mileage_at_service: undefined,
+      cost_kes: undefined,
+      next_due_date: '',
+      notes: ''
+    }
   });
 
   useEffect(() => {
@@ -33,6 +42,7 @@ export default function MaintenanceEditPage() {
       service_type: log.service_type,
       date_performed: log.date_performed?.slice(0, 10) ?? '',
       technician: log.technician,
+      mileage_at_service: log.mileage_at_service ?? undefined,
       cost_kes: log.cost_kes,
       next_due_date: log.next_due_date?.slice(0, 10) ?? '',
       notes: log.notes ?? ''
@@ -64,10 +74,37 @@ export default function MaintenanceEditPage() {
       <VramsHeader title="Edit Maintenance Record" subtitle={`Vehicle ${log.vehicle?.plate ?? `#${log.vehicle_id}`}`} />
       <VramsCard className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Controller name="service_type" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Service type" />} />
-          <Controller name="technician" control={control} render={({ field }) => <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Technician / Provider" />} />
+          <Controller
+            name="service_type"
+            control={control}
+            render={({ field }) => (
+              <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Work type / summary" />
+            )}
+          />
+          <Controller
+            name="technician"
+            control={control}
+            render={({ field }) => (
+              <input {...field} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Technician / shop (extension)" />
+            )}
+          />
           <Controller name="date_performed" control={control} render={({ field }) => <input {...field} type="date" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />} />
           <Controller name="next_due_date" control={control} render={({ field }) => <input {...field} type="date" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />} />
+          <Controller
+            name="mileage_at_service"
+            control={control}
+            render={({ field }) => (
+              <input
+                {...field}
+                type="number"
+                min={0}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Mileage at service (extension)"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+              />
+            )}
+          />
           <Controller name="cost_kes" control={control} render={({ field }) => <input {...field} type="number" min={0} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Cost KES" />} />
           <div className="md:col-span-2">
             <Controller name="notes" control={control} render={({ field }) => <textarea {...field} rows={4} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Notes" />} />

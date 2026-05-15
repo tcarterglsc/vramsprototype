@@ -14,6 +14,18 @@ import {
 } from '../VramsApi';
 import { VramsSidePanelSkeleton } from '../components/VramsLoadingSkeletons';
 import { notifyRtk } from '../utils/vramsNotify';
+import {
+	requestRef,
+	requestDestinationText,
+	requestStartTime,
+	requestEndTime,
+	requestStateKey,
+	requestPriorityKey,
+	requestPassengerCount,
+	requestReason,
+	requestIsFlexible,
+	userDisplayName
+} from '../utils/erdView';
 
 type Props = { requestId: number; onClose: () => void };
 
@@ -78,12 +90,24 @@ function ReviewPanel({ requestId, onClose }: Props) {
 		return <VramsSidePanelSkeleton />;
 	}
 	if (!request) return null;
+	
+	const ref = requestRef(request);
+	const requesterName = request.requester ? userDisplayName(request.requester) : '—';
+	const requesterDept = request.requester?.department ?? '—';
+	const destination = requestDestinationText(request);
+	const startTime = requestStartTime(request);
+	const endTime = requestEndTime(request);
+	const priority = requestPriorityKey(request);
+	const status = requestStateKey(request);
+	const passengerCount = requestPassengerCount(request);
+	const reason = requestReason(request);
+	const isFlexible = requestIsFlexible(request);
 
 	async function handleApprove() {
 		try {
 			await approve(request!.id).unwrap();
 			setDone('approved');
-			enqueueSnackbar(`${request!.ref} approved`, { variant: 'success' });
+			enqueueSnackbar(`${ref} approved`, { variant: 'success' });
 		} catch (err) {
 			notifyRtk(enqueueSnackbar, err, 'Failed to approve');
 		}
@@ -97,7 +121,7 @@ function ReviewPanel({ requestId, onClose }: Props) {
 		try {
 			await reject({ id: request!.id, reason: rejectReason }).unwrap();
 			setDone('rejected');
-			enqueueSnackbar(`${request!.ref} rejected`, { variant: 'info' });
+			enqueueSnackbar(`${ref} rejected`, { variant: 'info' });
 		} catch (err) {
 			notifyRtk(enqueueSnackbar, err, 'Failed to reject');
 		}
@@ -107,7 +131,7 @@ function ReviewPanel({ requestId, onClose }: Props) {
 		if (!request) return;
 		try {
 			await deleteRequest(request.id).unwrap();
-			enqueueSnackbar(`${request.ref} deleted`, { variant: 'success' });
+			enqueueSnackbar(`${ref} deleted`, { variant: 'success' });
 			setDeleteOpen(false);
 			onClose();
 		} catch (err) {
@@ -116,14 +140,14 @@ function ReviewPanel({ requestId, onClose }: Props) {
 	}
 
 	const rows = [
-		{ label: 'Requester', value: request.requester?.name ?? '—' },
-		{ label: 'Department', value: request.requester?.department ?? '—' },
-		{ label: 'Destination', value: request.destination },
-		{ label: 'Departure', value: new Date(request.departure_at).toLocaleString() },
-		{ label: 'Return', value: request.return_at ? new Date(request.return_at).toLocaleString() : '—' },
-		{ label: 'Booking Type', value: request.booking_type },
-		{ label: 'Passengers', value: request.passenger_count ?? 1 },
-		{ label: 'Purpose', value: request.purpose ?? '—' }
+		{ label: 'Requester', value: requesterName },
+		{ label: 'Department', value: requesterDept },
+		{ label: 'Destination', value: destination },
+		{ label: 'Departure', value: new Date(startTime).toLocaleString() },
+		{ label: 'Return', value: endTime ? new Date(endTime).toLocaleString() : '—' },
+		{ label: 'Booking Type', value: isFlexible ? 'flexible' : 'fixed' },
+		{ label: 'Passengers', value: passengerCount ?? 1 },
+		{ label: 'Purpose', value: reason ?? '—' }
 	];
 
 	return (
@@ -134,11 +158,11 @@ function ReviewPanel({ requestId, onClose }: Props) {
 				<div>
 					<div className="flex items-center gap-2 mb-1">
 						<div className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center text-sm">📋</div>
-						<span className="font-semibold text-gray-900">{request.ref}</span>
+						<span className="font-semibold text-gray-900">{ref}</span>
 					</div>
 					<div className="flex items-center gap-2">
-						<PriorityBadge priority={request.priority} />
-						<StatusBadge status={request.status} />
+						<PriorityBadge priority={priority} />
+						<StatusBadge status={status} />
 					</div>
 				</div>
 				<button

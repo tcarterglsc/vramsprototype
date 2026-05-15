@@ -6,6 +6,12 @@ import { VramsDataTablePanelSkeleton } from '../../../components/VramsLoadingSke
 import { useGetVramsVehicleStatusLogsQuery } from '../../../VramsApi';
 import VramsStatusChip from '../../../components/VramsStatusChip';
 import type { StatusLog } from '../../../types';
+import {
+	statusLogFromState,
+	statusLogToState,
+	statusLogChangedAt,
+	userDisplayName
+} from '../../../utils/erdView';
 
 function StatusLogTab({ vehicleId }: { vehicleId: number }) {
 	const { data: logs, isLoading } = useGetVramsVehicleStatusLogsQuery(vehicleId);
@@ -15,22 +21,22 @@ function StatusLogTab({ vehicleId }: { vehicleId: number }) {
 			{
 				accessorKey: 'changed_at',
 				header: 'Date / Time',
-				Cell: ({ cell }) => new Date(cell.getValue<string>()).toLocaleString()
+				Cell: ({ row }) => new Date(statusLogChangedAt(row.original)).toLocaleString()
 			},
 			{
 				id: 'changed_by',
 				header: 'Changed By',
-				accessorFn: (r) => r.changed_by?.name ?? 'System'
+				accessorFn: (r) => r.changed_by ? userDisplayName(r.changed_by) : 'System'
 			},
 			{
 				accessorKey: 'from_status',
 				header: 'From',
-				Cell: ({ row }) => <VramsStatusChip status={row.original.from_status} />
+				Cell: ({ row }) => <VramsStatusChip status={statusLogFromState(row.original)} />
 			},
 			{
 				accessorKey: 'to_status',
 				header: 'To',
-				Cell: ({ row }) => <VramsStatusChip status={row.original.to_status} />
+				Cell: ({ row }) => <VramsStatusChip status={statusLogToState(row.original)} />
 			},
 			{ accessorKey: 'reason', header: 'Reason' }
 		],

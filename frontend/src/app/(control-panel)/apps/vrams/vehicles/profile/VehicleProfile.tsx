@@ -19,6 +19,16 @@ import UploadDocumentModal from './UploadDocumentModal';
 import { VramsCard, VramsPage } from '../../components/VramsUi';
 import { VramsVehicleProfileSkeleton } from '../../components/VramsLoadingSkeletons';
 import { notifyRtk } from '../../utils/vramsNotify';
+import {
+	vehiclePlateNumber,
+	vehicleStatusKey,
+	vehicleTypeLabel,
+	vehicleMake,
+	vehicleModel,
+	vehicleVin,
+	vehicleIsBookable,
+	vehicleColor
+} from '../../utils/erdView';
 
 const TABS = [
 	{ value: 'overview', label: 'Overview' },
@@ -101,6 +111,15 @@ function VehicleProfile() {
 			? rawPhotoUrl
 			: `${API_BASE_URL}${rawPhotoUrl}`
 		: '';
+	
+	const plateNumber = vehiclePlateNumber(vehicle);
+	const status = vehicleStatusKey(vehicle);
+	const vehicleType = vehicleTypeLabel(vehicle);
+	const make = vehicleMake(vehicle);
+	const model = vehicleModel(vehicle);
+	const vin = vehicleVin(vehicle);
+	const isBookable = vehicleIsBookable(vehicle);
+	const color = vehicleColor(vehicle);
 
 	return (
 		<VramsPage className="space-y-6">
@@ -108,25 +127,25 @@ function VehicleProfile() {
 			<VramsCard className="px-6 py-5 flex items-center gap-5 flex-wrap">
 				<div className="w-52 flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl px-3 py-2.5 flex items-center justify-center min-h-[120px]">
 					{photoUrl ? (
-						<img src={photoUrl} alt={`${vehicle.plate} vehicle`} className="w-full h-24 object-cover rounded-lg" />
+						<img src={photoUrl} alt={`${plateNumber} vehicle`} className="w-full h-24 object-cover rounded-lg" />
 					) : (
 						<VehicleIllustration
-							vehicleType={vehicle.vehicle_type}
-							color={vehicle.color}
+							vehicleType={vehicleType}
+							color={color}
 							style={{ width: '100%', height: 96 }}
 						/>
 					)}
 				</div>
 				<div className="flex-1 min-w-0">
 					<div className="flex items-center gap-3 flex-wrap">
-						<span className="text-2xl font-bold font-mono text-gray-900">{vehicle.plate}</span>
-						<StatusBadge status={vehicle.status} />
-						{vehicle.bookable && (
+						<span className="text-2xl font-bold font-mono text-gray-900">{plateNumber}</span>
+						<StatusBadge status={status} />
+						{isBookable && (
 							<span className="px-3 py-1 rounded-full text-sm font-bold bg-blue-50 text-blue-700">✓ Bookable</span>
 						)}
 					</div>
 					<p className="text-base text-gray-500 mt-1">
-						{vehicle.make} {vehicle.model} · {vehicle.vehicle_type} · VIN: {vehicle.vin ?? '—'}
+						{make} {model} · {vehicleType} · VIN: {vin ?? '—'}
 					</p>
 				</div>
 				<div className="flex items-center gap-3">
